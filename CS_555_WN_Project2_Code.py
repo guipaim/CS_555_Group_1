@@ -23,7 +23,7 @@ def parse_line(line):
 
     return level, tag, valid, arguments
 
-with open('CS_555_WN_Guilherme_Paim.ged', 'r') as file:
+with open('Gedcom-file.ged', 'r') as file:
     for line in file:
         print(f'--> {line.strip()}')
         level, tag, valid, arguments = parse_line(line)
