@@ -33,11 +33,11 @@ with open('Gedcom-file.ged', 'r') as file:
             if 'INDI' in line:
                 if curr_indiv:
                     individuals.append(curr_indiv)
-                curr_indiv = {'NAME': arguments.split()[0]}
+                curr_indiv = {'ID': tag.strip().replace('@', '')}
             elif 'FAM' in line:
                 if curr_fam:
                     families.append(curr_fam)
-                curr_fam = {'NAME': arguments.split()[0]}
+                curr_fam = {'ID': tag.strip().replace('@', '')}
         elif level == '1':
             if tag == 'NAME' and curr_indiv is not None:
                 curr_indiv['NAME'] = arguments
@@ -52,11 +52,11 @@ with open('Gedcom-file.ged', 'r') as file:
             elif tag == 'DIV':
                 divorce = True
             elif tag == 'HUSB' and curr_fam is not None:
-                curr_fam['HUSB'] = arguments
+                curr_fam['HUSB'] = arguments.strip().replace('@', '')
             elif tag == 'WIFE' and curr_fam is not None:
-                curr_fam['WIFE'] = arguments
+                curr_fam['WIFE'] = arguments.strip().replace('@', '')
             elif tag == 'CHIL' and curr_fam is not None:
-                curr_fam.setdefault('CHIL', []).append(arguments)
+                curr_fam.setdefault('CHIL', []).append(arguments.strip().replace('@', ''))
         elif level == '2' and tag == 'DATE':
             if birth and curr_indiv is not None:
                 curr_indiv['BIRT'] = arguments
@@ -75,10 +75,51 @@ with open('Gedcom-file.ged', 'r') as file:
         individuals.append(curr_indiv)
     if curr_fam:
         families.append(curr_fam)
+#Reorganize family data to match order and add spouse names for families:
+for fam in families:
+    fam_id = fam.get('ID', 'NA')
+    married=fam.get('MARR', 'NA')
+    divorced=fam.get('DIV', 'NA')
+    husb_id=fam.get('HUSB', 'NA')
+    wife_id=fam.get('WIFE', 'NA')
+    children=fam.get('CHIL', [])
+#find spouse names 
+    husb_name = 'NA'
+    wife_name = 'NA'
 
+    if husb_id != 'NA':
+        for ind in individuals:
+            if ind.get('ID') == husb_id:
+                husb_name = ind.get('NAME', 'NA')
+                break
+
+    if wife_id != 'NA':
+        for ind in individuals:
+            if ind.get('ID') == wife_id:
+                wife_name = ind.get('NAME', 'NA')
+                break
+
+#reorganize family in desired order
+    fam.clear()
+    fam['ID'] = fam_id
+    fam['Married'] = married
+    fam['Divorced'] = divorced
+    fam['Husband ID'] = husb_id
+    fam['Husband Name'] = husb_name
+    fam['Wife ID'] = wife_id
+    fam['Wife Name'] = wife_name
+    fam['Children'] = children
+
+#Number of individuals and families
 print(f'\nNumber of Individuals: {len(individuals)}')
 print(f'Number of Families: {len(families)}')
 
+#sort individuals by ID 
+
+individuals.sort(key=lambda x: x.get('ID', ''))
+
+
+#print individuals and families
 
 print('\nIndividuals:')
 for ind in individuals:
