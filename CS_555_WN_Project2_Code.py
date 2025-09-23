@@ -1,3 +1,5 @@
+from datetime import datetime
+
 supported_tags = {
     'INDI', 'NAME', 'SEX', 'BIRT', 'DEAT', 'FAMC', 'FAMS',
     'FAM', 'MARR', 'HUSB', 'WIFE', 'CHIL', 'DIV', 'DATE',
@@ -118,6 +120,60 @@ print(f'Number of Families: {len(families)}')
 
 individuals.sort(key=lambda x: x.get('ID', ''))
 
+#reorganize individual data to match order of table
+for ind in individuals:
+    ind_id = ind.get('ID', 'NA')
+    name = ind.get('NAME', 'NA')
+    gender = ind.get('SEX', 'NA')
+    bday = ind.get('BIRT', 'NA')
+    
+    #get the age
+    bday_copy = bday
+    
+    # Convert birth string to datetime
+    bday_copy = datetime.strptime(bday_copy, "%d %b %Y")
+    
+    death = ind.get('DEAT', 'NA')
+        
+    if 'DEAT' in ind:
+        
+        
+        death_copy = death
+        death_copy = datetime.strptime(death_copy, "%d %b %Y")
+        
+        age = death_copy.year - bday_copy.year - ((death_copy.month, death_copy.day) < (bday_copy.month, bday_copy.day))
+    else:
+        today = datetime.today()
+        age = today.year - bday_copy.year - ((today.month, today.day) < (bday_copy.month, bday_copy.day))
+        
+    alive = 'False' if 'DEAT' in ind else 'True'
+    
+    
+    spouse = 'NA' if 'FAMS' not in ind else ind.get('FAMS', [])
+    
+    
+    for fam in families:
+        if fam.get('Husband ID') == ind_id or fam.get('Wife ID') == ind_id:
+            children = 'NA' if 'Children' not in fam else fam.get('Children', [])
+            
+            if fam.get('Husband ID') == ind_id:
+                spouse = fam.get('Wife ID', 'NA')
+            elif fam.get('Wife ID') == ind_id:
+                spouse = fam.get('Husband ID', 'NA')
+            
+            break
+    
+    ind.clear()
+    ind['ID'] = ind_id
+    ind['Name'] = name
+    ind['Gender'] = gender
+    ind['Birthday'] = bday
+    ind['Age'] = age
+    ind['Alive'] = alive
+    ind['Death'] = death
+    ind['Children'] = children
+    ind['Spouse'] = spouse
+    
 
 #print individuals and families
 
