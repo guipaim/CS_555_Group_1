@@ -1,22 +1,15 @@
 from datetime import datetime
+from prettytable import PrettyTable
 
-supported_tags = {
+
+def parse_line(line):
+    
+    supported_tags = {
     'INDI', 'NAME', 'SEX', 'BIRT', 'DEAT', 'FAMC', 'FAMS',
     'FAM', 'MARR', 'HUSB', 'WIFE', 'CHIL', 'DIV', 'DATE',
     'HEAD', 'TRLR', 'NOTE'
-}
-
-individuals = []
-families = []
-
-curr_indiv = None
-curr_fam = None
-birth = False
-death = False
-marriage = False
-divorce = False
-
-def parse_line(line):
+    }
+    
     parts = line.strip().split(' ', 2)
     level = parts[0]
     tag = parts[1]
@@ -25,162 +18,254 @@ def parse_line(line):
 
     return level, tag, valid, arguments
 
-with open('Gedcom-file.ged', 'r') as file:
-    for line in file:
-        print(f'--> {line.strip()}')
-        level, tag, valid, arguments = parse_line(line)
-        print(f'<-- {level}|{tag}|{valid}|{arguments}')
 
-        if level == '0':
-            if 'INDI' in line:
-                if curr_indiv:
-                    individuals.append(curr_indiv)
-                curr_indiv = {'ID': tag.strip().replace('@', '')}
-            elif 'FAM' in line:
-                if curr_fam:
-                    families.append(curr_fam)
-                curr_fam = {'ID': tag.strip().replace('@', '')}
-        elif level == '1':
-            if tag == 'NAME' and curr_indiv is not None:
-                curr_indiv['NAME'] = arguments
-            elif tag == 'SEX' and curr_indiv is not None:
-                curr_indiv['SEX'] = arguments
-            elif tag == 'BIRT':
-                birth = True
-            elif tag == 'DEAT':
-                death = True
-            elif tag == 'MARR':
-                marriage = True
-            elif tag == 'DIV':
-                divorce = True
-            elif tag == 'HUSB' and curr_fam is not None:
-                curr_fam['HUSB'] = arguments.strip().replace('@', '')
-            elif tag == 'WIFE' and curr_fam is not None:
-                curr_fam['WIFE'] = arguments.strip().replace('@', '')
-            elif tag == 'CHIL' and curr_fam is not None:
-                curr_fam.setdefault('CHIL', []).append(arguments.strip().replace('@', ''))
-        elif level == '2' and tag == 'DATE':
-            if birth and curr_indiv is not None:
-                curr_indiv['BIRT'] = arguments
-                birth = False
-            elif death and curr_indiv is not None:
-                curr_indiv['DEAT'] = arguments
-                death = False
-            elif marriage and curr_fam is not None:
-                curr_fam['MARR'] = arguments
-                marriage = False
-            elif divorce and curr_fam is not None:
-                curr_fam['DIV'] = arguments
-                divorce = False
+def readGedcomFile(filename):
+    
+    individuals = []
+    families = []
 
-    if curr_indiv:
-        individuals.append(curr_indiv)
-    if curr_fam:
-        families.append(curr_fam)
-#Reorganize family data to match order and add spouse names for families:
-for fam in families:
-    fam_id = fam.get('ID', 'NA')
-    married=fam.get('MARR', 'NA')
-    divorced=fam.get('DIV', 'NA')
-    husb_id=fam.get('HUSB', 'NA')
-    wife_id=fam.get('WIFE', 'NA')
-    children=fam.get('CHIL', [])
-#find spouse names 
-    husb_name = 'NA'
-    wife_name = 'NA'
+    curr_indiv = None
+    curr_fam = None
+    birth = False
+    death = False
+    marriage = False
+    divorce = False
+    #start
+    with open(filename, 'r') as file:
+        for line in file:
+            print(f'--> {line.strip()}')
+            level, tag, valid, arguments = parse_line(line)
+            print(f'<-- {level}|{tag}|{valid}|{arguments}')
 
-    if husb_id != 'NA':
-        for ind in individuals:
-            if ind.get('ID') == husb_id:
-                husb_name = ind.get('NAME', 'NA')
+            if level == '0':
+                if 'INDI' in line:
+                    if curr_indiv:
+                        individuals.append(curr_indiv)
+                    curr_indiv = {'ID': tag.strip().replace('@', '')}
+                elif 'FAM' in line:
+                    if curr_fam:
+                        families.append(curr_fam)
+                    curr_fam = {'ID': tag.strip().replace('@', '')}
+            elif level == '1':
+                if tag == 'NAME' and curr_indiv is not None:
+                    curr_indiv['NAME'] = arguments
+                elif tag == 'SEX' and curr_indiv is not None:
+                    curr_indiv['SEX'] = arguments
+                elif tag == 'BIRT':
+                    birth = True
+                elif tag == 'DEAT':
+                    death = True
+                elif tag == 'MARR':
+                    marriage = True
+                elif tag == 'DIV':
+                    divorce = True
+                elif tag == 'HUSB' and curr_fam is not None:
+                    curr_fam['HUSB'] = arguments.strip().replace('@', '')
+                elif tag == 'WIFE' and curr_fam is not None:
+                    curr_fam['WIFE'] = arguments.strip().replace('@', '')
+                elif tag == 'CHIL' and curr_fam is not None:
+                    curr_fam.setdefault('CHIL', []).append(arguments.strip().replace('@', ''))
+            elif level == '2' and tag == 'DATE':
+                if birth and curr_indiv is not None:
+                    curr_indiv['BIRT'] = arguments
+                    birth = False
+                elif death and curr_indiv is not None:
+                    curr_indiv['DEAT'] = arguments
+                    death = False
+                elif marriage and curr_fam is not None:
+                    curr_fam['MARR'] = arguments
+                    marriage = False
+                elif divorce and curr_fam is not None:
+                    curr_fam['DIV'] = arguments
+                    divorce = False
+
+        if curr_indiv:
+            individuals.append(curr_indiv)
+        if curr_fam:
+            families.append(curr_fam)
+        
+    return individuals, families
+    
+    
+def organizeFamilyData(family_list, individual_list):
+    #Reorganize family data to match order and add spouse names for families:
+    for fam in family_list:
+        fam_id = fam.get('ID', 'NA')
+        married=fam.get('MARR', 'NA')
+        divorced=fam.get('DIV', 'NA')
+        husb_id=fam.get('HUSB', 'NA')
+        wife_id=fam.get('WIFE', 'NA')
+        children=fam.get('CHIL', [])
+        #find spouse names 
+        husb_name = 'NA'
+        wife_name = 'NA'
+
+        if husb_id != 'NA':
+            for ind in individual_list:
+                if ind.get('ID') == husb_id:
+                    husb_name = ind.get('NAME', 'NA')
+                    break
+
+        if wife_id != 'NA':
+            for ind in individual_list:
+                if ind.get('ID') == wife_id:
+                    wife_name = ind.get('NAME', 'NA')
+                    break
+
+        #reorganize family in desired order
+        fam.clear()
+        fam['ID'] = fam_id
+        fam['Married'] = married
+        fam['Divorced'] = divorced
+        fam['Husband ID'] = husb_id
+        fam['Husband Name'] = husb_name
+        fam['Wife ID'] = wife_id
+        fam['Wife Name'] = wife_name
+        fam['Children'] = children
+    
+    return family_list
+
+
+def organizeIndividualData(family_list, individual_list):
+    #sort individuals by ID 
+
+    individual_list.sort(key=lambda x: x.get('ID', ''))
+
+    #reorganize individual data to match order of table
+    for ind in individual_list:
+        ind_id = ind.get('ID', 'NA')
+        name = ind.get('NAME', 'NA')
+        gender = ind.get('SEX', 'NA')
+        bday = ind.get('BIRT', 'NA')
+
+        #get the age
+        bday_copy = bday
+
+        # Convert birth string to datetime
+        bday_copy = datetime.strptime(bday_copy, "%d %b %Y")
+
+        death = ind.get('DEAT', 'NA')
+
+        if 'DEAT' in ind:
+
+
+            death_copy = death
+            death_copy = datetime.strptime(death_copy, "%d %b %Y")
+
+            age = death_copy.year - bday_copy.year - ((death_copy.month, death_copy.day) < (bday_copy.month, bday_copy.day))
+        else:
+            today = datetime.today()
+            age = today.year - bday_copy.year - ((today.month, today.day) < (bday_copy.month, bday_copy.day))
+
+        alive = 'False' if 'DEAT' in ind else 'True'
+
+
+        spouse = 'NA' if 'FAMS' not in ind else ind.get('FAMS', [])
+
+
+        children = []
+
+        for fam in family_list:
+            if fam.get('Husband ID') == ind_id or fam.get('Wife ID') == ind_id:
+                children = 'NA' if 'Children' not in fam else fam.get('Children', [])
+
+                if fam.get('Husband ID') == ind_id:
+                    spouse = fam.get('Wife ID', 'NA')
+                elif fam.get('Wife ID') == ind_id:
+                    spouse = fam.get('Husband ID', 'NA')
+
                 break
+            
+        ind.clear()
+        ind['ID'] = ind_id
+        ind['Name'] = name
+        ind['Gender'] = gender
+        ind['Birthday'] = bday
+        ind['Age'] = age
+        ind['Alive'] = alive
+        ind['Death'] = death
+        ind['Children'] = children
+        ind['Spouse'] = spouse
+    
+    return individual_list
 
-    if wife_id != 'NA':
-        for ind in individuals:
-            if ind.get('ID') == wife_id:
-                wife_name = ind.get('NAME', 'NA')
-                break
+def createTable(family_list, individual_list):
+    #start
+    individual_list.sort(key=lambda x: x['ID'])
+    family_list.sort(key=lambda x: x['ID'])
 
-#reorganize family in desired order
-    fam.clear()
+    ind_table = PrettyTable()
+    ind_table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Alive", "Death", "Children", "Spouse"]
+
+    for ind in individual_list:
+        ind_table.add_row([
+            ind.get('ID', ''),
+            ind.get('Name', ''),
+            ind.get('Gender', ''),
+            ind.get('Birthday', ''),
+            ind.get('Age', ''),
+            ind.get('Alive', ''),
+            ind.get('Death', ''),
+            ind.get('Children', ''),
+            ind.get('Spouse', '')
+        ])
+
+    print("\nIndividuals:")
+    print(ind_table)
+    '''
     fam['ID'] = fam_id
-    fam['Married'] = married
-    fam['Divorced'] = divorced
-    fam['Husband ID'] = husb_id
-    fam['Husband Name'] = husb_name
-    fam['Wife ID'] = wife_id
-    fam['Wife Name'] = wife_name
-    fam['Children'] = children
+        fam['Married'] = married
+        fam['Divorced'] = divorced
+        fam['Husband ID'] = husb_id
+        fam['Husband Name'] = husb_name
+        fam['Wife ID'] = wife_id
+        fam['Wife Name'] = wife_name
+        fam['Children'] = children
+    
+    '''
+    fam_table = PrettyTable()
+    fam_table.field_names = ["ID", "Married", "Divorced", "Husband ID", "Husband Name", "Wife ID", "Wife Name", "Children"]
 
-#Number of individuals and families
-print(f'\nNumber of Individuals: {len(individuals)}')
-print(f'Number of Families: {len(families)}')
+    for fam in family_list:
 
-#sort individuals by ID 
+        
 
-individuals.sort(key=lambda x: x.get('ID', ''))
+        fam_table.add_row([
+            fam.get('ID', ''),
+            fam.get('Married', ''),
+            fam.get('Divorced', ''),
+            fam.get('Husband ID', ''),
+            fam.get('Husband Name', ''),
+            fam.get('Wife ID', ''),
+            fam.get('Wife Name', ''),
+            fam.get('Children', '')
+        ])
 
-#reorganize individual data to match order of table
-for ind in individuals:
-    ind_id = ind.get('ID', 'NA')
-    name = ind.get('NAME', 'NA')
-    gender = ind.get('SEX', 'NA')
-    bday = ind.get('BIRT', 'NA')
+    print("\nFamilies:")
+    print(fam_table)
+
+
+
+if __name__ == "__main__":
+    #readGedFile
+    individuals, families = readGedcomFile("Gedcom-file.ged")
     
-    #get the age
-    bday_copy = bday
+    #organize fam data
+    families = organizeFamilyData(families, individuals)
     
-    # Convert birth string to datetime
-    bday_copy = datetime.strptime(bday_copy, "%d %b %Y")
-    
-    death = ind.get('DEAT', 'NA')
-        
-    if 'DEAT' in ind:
-        
-        
-        death_copy = death
-        death_copy = datetime.strptime(death_copy, "%d %b %Y")
-        
-        age = death_copy.year - bday_copy.year - ((death_copy.month, death_copy.day) < (bday_copy.month, bday_copy.day))
-    else:
-        today = datetime.today()
-        age = today.year - bday_copy.year - ((today.month, today.day) < (bday_copy.month, bday_copy.day))
-        
-    alive = 'False' if 'DEAT' in ind else 'True'
+    #organize individual
+    individuals = organizeIndividualData(families, individuals)
     
     
-    spouse = 'NA' if 'FAMS' not in ind else ind.get('FAMS', [])
-    
-    
+    #print individuals and families
+    ''' 
+    print('\nIndividuals:')
+    for ind in individuals:
+        print(ind)
+
+    print('\nFamilies:')
     for fam in families:
-        if fam.get('Husband ID') == ind_id or fam.get('Wife ID') == ind_id:
-            children = 'NA' if 'Children' not in fam else fam.get('Children', [])
-            
-            if fam.get('Husband ID') == ind_id:
-                spouse = fam.get('Wife ID', 'NA')
-            elif fam.get('Wife ID') == ind_id:
-                spouse = fam.get('Husband ID', 'NA')
-            
-            break
+        print(fam)
+    '''
     
-    ind.clear()
-    ind['ID'] = ind_id
-    ind['Name'] = name
-    ind['Gender'] = gender
-    ind['Birthday'] = bday
-    ind['Age'] = age
-    ind['Alive'] = alive
-    ind['Death'] = death
-    ind['Children'] = children
-    ind['Spouse'] = spouse
-    
-
-#print individuals and families
-
-print('\nIndividuals:')
-for ind in individuals:
-    print(ind)
-
-print('\nFamilies:')
-for fam in families:
-    print(fam)
+    createTable(families, individuals)
