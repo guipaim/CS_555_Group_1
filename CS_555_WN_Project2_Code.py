@@ -198,6 +198,22 @@ def createTable(family_list, individual_list):
     ind_table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Alive", "Death", "Children", "Spouse"]
 
     for ind in individual_list:
+        # Format Children with curly braces
+        children = ind.get('Children', [])
+        if children == 'NA' or not children:
+            children_display = "NA"
+        elif isinstance(children, list):
+            children_display = "{" + ", ".join([f"'{c}'" for c in children]) + "}"
+        else:
+            children_display = f"{{'{children}'}}"
+        
+        # Format Spouse with curly braces
+        spouse = ind.get('Spouse', 'NA')
+        if spouse == 'NA':
+            spouse_display = "NA"
+        else:
+            spouse_display = f"{{'{spouse}'}}"
+
         ind_table.add_row([
             ind.get('ID', ''),
             ind.get('Name', ''),
@@ -206,29 +222,23 @@ def createTable(family_list, individual_list):
             ind.get('Age', ''),
             ind.get('Alive', ''),
             ind.get('Death', ''),
-            ind.get('Children', ''),
-            ind.get('Spouse', '')
+            children_display,
+            spouse_display
         ])
 
     print("\nIndividuals:")
     print(ind_table)
-    '''
-    fam['ID'] = fam_id
-        fam['Married'] = married
-        fam['Divorced'] = divorced
-        fam['Husband ID'] = husb_id
-        fam['Husband Name'] = husb_name
-        fam['Wife ID'] = wife_id
-        fam['Wife Name'] = wife_name
-        fam['Children'] = children
-    
-    '''
+
     fam_table = PrettyTable()
     fam_table.field_names = ["ID", "Married", "Divorced", "Husband ID", "Husband Name", "Wife ID", "Wife Name", "Children"]
 
     for fam in family_list:
-
-        
+        # Format Children with curly braces for families too
+        children = fam.get('Children', [])
+        if not children:
+            children_display = "NA"
+        else:
+            children_display = "{" + ", ".join([f"'{c}'" for c in children]) + "}"
 
         fam_table.add_row([
             fam.get('ID', ''),
@@ -238,12 +248,11 @@ def createTable(family_list, individual_list):
             fam.get('Husband Name', ''),
             fam.get('Wife ID', ''),
             fam.get('Wife Name', ''),
-            fam.get('Children', '')
+            children_display
         ])
 
     print("\nFamilies:")
     print(fam_table)
-
 
 
 if __name__ == "__main__":
