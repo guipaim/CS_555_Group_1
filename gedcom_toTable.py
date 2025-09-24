@@ -1,4 +1,5 @@
 from prettytable import PrettyTable
+from datetime import datetime, date
 
 
 supported_tags = {
@@ -17,6 +18,9 @@ death = False
 marriage = False
 divorce = False
 
+def na_if_empty(value):
+    return value if value not in (None, '', [], {}) else 'N/A'
+
 def parse_line(line):
     parts = line.strip().split(' ', 2)
     level = parts[0]
@@ -26,6 +30,21 @@ def parse_line(line):
 
     return level, tag, valid, arguments
 
+def calculate_age(birth_str, death_str=None):
+    try:
+        birth_date = datetime.strptime(birth_str, "%d %b %Y").date()
+    except:
+        return ''
+    if death_str:
+        try:
+            death_date = datetime.strptime(death_str, "%d %b %Y").date()
+        except:
+            return '' 
+        return death_date.year - birth_date.year - ((death_date.month, death_date.day) < (birth_date.month, birth_date.day))
+    else:
+        today = date.today()
+        return today.year - birth_date.year - ((today.month, today.day) < (birth_date.month, birth_date.day))
+                
 with open('Gedcom-file.ged', 'r') as file:
     for line in file:
         
@@ -88,34 +107,66 @@ individuals.sort(key=lambda x: x['ID'])
 families.sort(key=lambda x: x['ID'])
 
 ind_table = PrettyTable()
-ind_table.field_names = ["ID", "Name", "Sex", "Birth", "Death"]
+ind_table.field_names = ["ID", "Name", "Sex", "Birth", "Death", "Age", "Alive", "Children", "Spouse"]
+
 
 for ind in individuals:
+    age = calculate_age(ind.get('BIRT', ''), ind.get('DEAT', ''))
+    alive = 'True'if not ind.get('DEAT') else 'False'
+    id_to_name = {ind['ID']: na_if_empty(ind.get('NAME', '')) for ind in individuals}
+
+
+    children_ids = []
+    spouse_ids = []
+
+    for fam in families:
+        if fam.get('HUSB', '').strip('@') == ind['ID']:
+            children_ids.extend([c.strip('@') for c in fam.get('CHIL', [])])
+            spouse_ids.append(fam.get('WIFE', '').strip('@'))
+        elif fam.get('WIFE', '').strip('@') == ind['ID']:
+            children_ids.extend(fam.get('CHIL', []))
+            spouse_ids.append(fam.get('HUSB', '').strip('@'))
+
+    children_str = '{' + ', '.join(children_ids) + '}' if children_ids else '{}'
+    spouse_str = '{' + ', '.join(spouse_ids) + '}' if spouse_ids else '{}'
+
+
     ind_table.add_row([
         ind.get('ID', ''),
         ind.get('NAME', ''),
         ind.get('SEX', ''),
         ind.get('BIRT', ''),
-        ind.get('DEAT', '')
+        ind.get('DEAT', ''),
+        age,
+        alive,
+        children_str,
+        spouse_str
     ])
 
 print("\nIndividuals:")
 print(ind_table)
 
 fam_table = PrettyTable()
-fam_table.field_names = ["ID", "Husband", "Wife", "Marriage", "Divorce", "Children"]
+fam_table.field_names = ["ID", "Married", "Divorced", "Husband ID", "Husband Name", "Wife ID", "Wife Name", "Children"]
+
 
 for fam in families:
 
-    children = fam.get('CHIL', [])
-    children_str = '{' + ', '.join(children) + '}' if children else '{}'
+    children = [c.strip('@') for c in fam.get('CHIL', [])]
+    children_str = '{' + ', '.join(children) + '}' if children else 'N/A'
+
+    husband_id = fam.get('HUSB', '').strip('@')
+    wife_id = fam.get('WIFE', '').strip('@')
+
 
     fam_table.add_row([
-        fam.get('ID', ''),
-        fam.get('HUSB', ''),
-        fam.get('WIFE', ''),
-        fam.get('MARR', ''),
-        fam.get('DIV', ''),
+        na_if_empty(fam.get('ID', '')),
+        na_if_empty(fam.get('MARR', '')),
+        na_if_empty(fam.get('DIV', '')),
+        na_if_empty(husband_id),
+        id_to_name.get(husband_id, 'N/A'),
+        na_if_empty(wife_id),
+        id_to_name.get(wife_id, 'N/A'),
         children_str
     ])
 
