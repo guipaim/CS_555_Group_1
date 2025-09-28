@@ -255,6 +255,16 @@ def createTable(family_list, individual_list):
     print(fam_table)
 
 
+def list_living_married(individual_list):
+    """List all living married individuals"""
+    living_married_list = []
+
+    for ind in individual_list:
+        if ind.get('Alive') == 'True' and ind.get('Spouse') != 'NA':
+            living_married_list.append(ind)
+            
+    return living_married_list
+
 if __name__ == "__main__":
     #readGedFile
     individuals, families = readGedcomFile("Gedcom-file.ged")
