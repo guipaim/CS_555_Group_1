@@ -254,6 +254,15 @@ def createTable(family_list, individual_list):
     print("\nFamilies:")
     print(fam_table)
 
+def list_deceased(individual_list):
+    """List all deceased individuals"""
+    deceasedList = []
+    
+    for ind in individual_list:
+        if ind.get('Alive') == 'False':
+            deceasedList.append(ind)
+
+    return deceasedList
 
 def list_living_married(individual_list):
     """List all living married individuals"""
@@ -265,6 +274,8 @@ def list_living_married(individual_list):
             
     return living_married_list
 
+    
+    
 if __name__ == "__main__":
     #readGedFile
     individuals, families = readGedcomFile("Gedcom-file.ged")
