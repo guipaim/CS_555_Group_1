@@ -33,9 +33,7 @@ def readGedcomFile(filename):
     #start
     with open(filename, 'r') as file:
         for line in file:
-            print(f'--> {line.strip()}')
             level, tag, valid, arguments = parse_line(line)
-            print(f'<-- {level}|{tag}|{valid}|{arguments}')
 
             if level == '0':
                 if 'INDI' in line:
