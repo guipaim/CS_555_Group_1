@@ -257,12 +257,24 @@ def createTable(family_list, individual_list):
 def list_deceased(individual_list):
     """List all deceased individuals"""
     deceasedList = []
-
+    
     for ind in individual_list:
         if ind.get('Alive') == 'False':
             deceasedList.append(ind)
 
     return deceasedList
+
+def list_living_married(individual_list):
+    """List all living married individuals"""
+    living_married_list = []
+
+    for ind in individual_list:
+        if ind.get('Alive') == 'True' and ind.get('Spouse') != 'NA':
+            living_married_list.append(ind)
+            
+    return living_married_list
+
+    
     
 if __name__ == "__main__":
     #readGedFile
