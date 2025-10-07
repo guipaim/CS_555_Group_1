@@ -35,8 +35,30 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     def test_all_individuals_have_birthdays(self):
         for ind in self.individuals_data:
             self.assertNotEqual(ind['Birthday'], 'NA')
-  
-        
+
+    def test_is_data(self):
+        self.assertIsInstance(self.individuals_data, list)
+        self.assertIsInstance(self.families_data, list)
+
+
+    def test_individual_data_not_empty(self):
+        self.assertNotEqual(len(self.individuals_data), 0)
+
+
+    def test_families_data_not_empty(self):
+        self.assertNotEqual(len(self.families_data), 0)
+
+
+    def test_individual_data_object(self):
+        for ind in self.individuals_data:
+            self.assertGreaterEqual(len(ind), 3)
+            self.assertLessEqual(len(ind), 9)
+
+
+    def test_families_data_object(self):
+        for fam in self.families_data:
+            self.assertGreaterEqual(len(fam), 4)
+            self.assertLessEqual(len(fam), 8)
         
 if __name__ == "__main__":
     unittest.main()
