@@ -261,6 +261,12 @@ def createTable(family_list, individual_list):
     print("\nFamilies:")
     print(fam_table)
 
+def verifyAge(individual_list):
+    for ind in individual_list:
+        if ind['Age'] < 0:
+            print("Error: " + ind['Name'] + " died before they were born")
+            individual_list.remove(ind)
+
 def list_deceased(individual_list):
     """List all deceased individuals"""
     deceasedList = []
@@ -292,6 +298,7 @@ if __name__ == "__main__":
     
     #organize individual
     individuals = organizeIndividualData(families, individuals)
+    verifyAge(individuals)
     
     
     #print individuals and families
