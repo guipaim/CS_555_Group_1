@@ -19,6 +19,15 @@ def parse_line(line):
     return level, tag, valid, arguments
 
 
+def is_bday_in_past(bday_str):
+    bday_str = datetime.strptime(bday_str, "%d %b %Y")
+    today_date_str = datetime.today()
+    
+    if bday_str < today_date_str:
+        return True
+    else:
+        return False
+    
 def readGedcomFile(filename):
     
     individuals = []
@@ -138,52 +147,52 @@ def organizeIndividualData(family_list, individual_list):
 
         #get the age
         bday_copy = bday
+        if is_bday_in_past(bday_copy):
+            # Convert birth string to datetime
+            bday_copy = datetime.strptime(bday_copy, "%d %b %Y")
 
-        # Convert birth string to datetime
-        bday_copy = datetime.strptime(bday_copy, "%d %b %Y")
+            death = ind.get('DEAT', 'NA')
 
-        death = ind.get('DEAT', 'NA')
-
-        if 'DEAT' in ind:
-
-
-            death_copy = death
-            death_copy = datetime.strptime(death_copy, "%d %b %Y")
-
-            age = death_copy.year - bday_copy.year - ((death_copy.month, death_copy.day) < (bday_copy.month, bday_copy.day))
-        else:
-            today = datetime.today()
-            age = today.year - bday_copy.year - ((today.month, today.day) < (bday_copy.month, bday_copy.day))
-
-        alive = 'False' if 'DEAT' in ind else 'True'
+            if 'DEAT' in ind:
 
 
-        spouse = 'NA' if 'FAMS' not in ind else ind.get('FAMS', [])
+                death_copy = death
+                death_copy = datetime.strptime(death_copy, "%d %b %Y")
+
+                age = death_copy.year - bday_copy.year - ((death_copy.month, death_copy.day) < (bday_copy.month, bday_copy.day))
+            else:
+                today = datetime.today()
+                age = today.year - bday_copy.year - ((today.month, today.day) < (bday_copy.month, bday_copy.day))
+
+            alive = 'False' if 'DEAT' in ind else 'True'
 
 
-        children = []
+            spouse = 'NA' if 'FAMS' not in ind else ind.get('FAMS', [])
 
-        for fam in family_list:
-            if fam.get('Husband ID') == ind_id or fam.get('Wife ID') == ind_id:
-                children = 'NA' if 'Children' not in fam else fam.get('Children', [])
 
-                if fam.get('Husband ID') == ind_id:
-                    spouse = fam.get('Wife ID', 'NA')
-                elif fam.get('Wife ID') == ind_id:
-                    spouse = fam.get('Husband ID', 'NA')
+            children = []
 
-                break
-            
-        ind.clear()
-        ind['ID'] = ind_id
-        ind['Name'] = name
-        ind['Gender'] = gender
-        ind['Birthday'] = bday
-        ind['Age'] = age
-        ind['Alive'] = alive
-        ind['Death'] = death
-        ind['Children'] = children
-        ind['Spouse'] = spouse
+            for fam in family_list:
+                if fam.get('Husband ID') == ind_id or fam.get('Wife ID') == ind_id:
+                    children = 'NA' if 'Children' not in fam else fam.get('Children', [])
+
+                    if fam.get('Husband ID') == ind_id:
+                        spouse = fam.get('Wife ID', 'NA')
+                    elif fam.get('Wife ID') == ind_id:
+                        spouse = fam.get('Husband ID', 'NA')
+
+                    break
+                
+            ind.clear()
+            ind['ID'] = ind_id
+            ind['Name'] = name
+            ind['Gender'] = gender
+            ind['Birthday'] = bday
+            ind['Age'] = age
+            ind['Alive'] = alive
+            ind['Death'] = death
+            ind['Children'] = children
+            ind['Spouse'] = spouse
     
     return individual_list
 
