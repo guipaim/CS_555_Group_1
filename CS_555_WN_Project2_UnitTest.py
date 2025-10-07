@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, createTable
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -35,6 +35,12 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     def test_all_individuals_have_birthdays(self):
         for ind in self.individuals_data:
             self.assertNotEqual(ind['Birthday'], 'NA')
+
+    def test_createTable_executes_successfully(self):
+        try:
+            createTable(self.families_data, self.individuals_data)
+        except Exception as e:
+            self.fail(f"createTable raised an exception: {e}")            
   
         
         

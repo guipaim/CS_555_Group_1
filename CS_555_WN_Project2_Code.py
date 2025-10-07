@@ -272,6 +272,32 @@ def list_living_married(individual_list):
             
     return living_married_list
 
+def validate_birth_before_marriage(individual_list, family_list):
+    """Check that birth date precedes marriage date, otherwise throw error"""
+
+    for ind in individual_list:
+        
+        spouse = ind.get('Spouse')
+
+        if spouse == 'NA' or ind.get('Birthday') == 'NA':
+            continue
+
+        birth_date = datetime.strptime(ind.get('Birthday'), "%d %b %Y")
+
+        for fam in family_list:
+            if fam.get('Husband ID') == ind.get('ID') or fam.get('Wife ID') == ind.get('ID'):
+                if fam.get('Married') == 'NA':
+                    continue
+
+                marriage_date = datetime.strptime(fam.get('Married'), "%d %b %Y")
+
+                if birth_date > marriage_date:
+                    raise ValueError(
+                        f"ERROR: Individual {ind.get('ID')} ({ind.get('Name')}) "
+                        f"was born ({ind.get('Birthday')}) after marriage ({fam.get('Married')})"
+                )
+    return True                        
+
     
     
 if __name__ == "__main__":
