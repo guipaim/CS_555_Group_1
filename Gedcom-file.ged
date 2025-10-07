@@ -24,9 +24,9 @@
 1 OCCU IT Consultant
 1 FAMC @F1@
 0 @I2@ INDI
-1 NAME Rogerio Neves Da Silveira /Nunes/
-2 GIVN Rogerio Neves Da Silveira
-2 SURN Nunes
+1 NAME Rogerio /Neves Da Silveira Nunes/
+2 GIVN Rogerio
+2 SURN Neves Da Silveira Nunes
 2 _MARNM Nunes
 1 SEX M
 1 BIRT
@@ -36,8 +36,8 @@
 1 FAMS @F2@
 1 FAMC @F3@
 0 @I3@ INDI
-1 NAME Ana Lourdes Pinheiro Mendes /Pinheiro Mendes/
-2 GIVN Ana Lourdes Pinheiro Mendes
+1 NAME Ana Lourdes /Pinheiro Mendes/
+2 GIVN Ana Lourdes
 2 SURN Pinheiro Mendes
 2 _MARNM Nunes
 1 SEX F
@@ -67,8 +67,8 @@
 2 PLAC Rio de Janeiro
 1 FAMS @F2@
 0 @I6@ INDI
-1 NAME Andre Avelino Mendes /Mendes/
-2 GIVN Andre Avelino Mendes
+1 NAME Andre Avelino /Mendes/
+2 GIVN Andre Avelino
 2 SURN Mendes
 2 _MARNM Mendes
 1 SEX M
@@ -82,9 +82,9 @@
 1 OCCU Teacher
 1 FAMS @F4@
 0 @I7@ INDI
-1 NAME Maria de Conceicao Pinheiro Mendes /Pinheiro/
-2 GIVN Maria de Conceicao Pinheiro Mendes
-2 SURN Pinheiro
+1 NAME Maria de Conceicao /Pinheiro Mendes/
+2 GIVN Maria de Conceicao
+2 SURN Pinheiro Mendes
 2 _MARNM Pinheiro Mendes
 1 SEX F
 1 BIRT
@@ -93,8 +93,8 @@
 1 OCCU Farm Owner
 1 FAMS @F4@
 0 @I8@ INDI
-1 NAME Adauto Nicolau Nunes /Nunes/
-2 GIVN Adauto Nicolau Nunes
+1 NAME Adauto Nicolau /Nunes/
+2 GIVN Adauto Nicolau
 2 SURN Nunes
 2 _MARNM Nunes
 1 SEX M
@@ -112,9 +112,9 @@
 1 FAMS @F3@
 1 FAMS @F5@
 0 @I9@ INDI
-1 NAME Silvi Neves Da Silveira /Neves da SIlveira/
-2 GIVN Silvi Neves Da Silveira
-2 SURN Neves da SIlveira
+1 NAME Silvi /Neves Da Silveira/
+2 GIVN Silvi
+2 SURN Neves Da Silveira
 2 _MARNM Nunes
 1 SEX F
 1 BIRT
