@@ -193,7 +193,7 @@ def createTable(family_list, individual_list):
     family_list.sort(key=lambda x: x['ID'])
 
     ind_table = PrettyTable()
-    ind_table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Alive", "Death", "Children", "Spouse"]
+    #ind_table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Alive", "Death", "Children", "Spouse"]
 
     for ind in individual_list:
         # Format Children with curly braces
@@ -278,18 +278,21 @@ def validate_birth_before_marriage(individual_list, family_list):
     for ind in individual_list:
         
         spouse = ind.get('Spouse')
+        birthday = ind.get('Birthday')
 
-        if spouse == 'NA' or ind.get('Birthday') == 'NA':
+        if spouse == 'NA' or birthday == 'NA' or birthday is None:
             continue
 
-        birth_date = datetime.strptime(ind.get('Birthday'), "%d %b %Y")
+        birth_date = datetime.strptime(birthday, "%d %b %Y")
 
         for fam in family_list:
             if fam.get('Husband ID') == ind.get('ID') or fam.get('Wife ID') == ind.get('ID'):
-                if fam.get('Married') == 'NA':
+                married = fam.get('Married')
+                
+                if married == 'NA' or married is None:
                     continue
 
-                marriage_date = datetime.strptime(fam.get('Married'), "%d %b %Y")
+                marriage_date = datetime.strptime(married, "%d %b %Y")
 
                 if birth_date > marriage_date:
                     raise ValueError(
@@ -323,3 +326,4 @@ if __name__ == "__main__":
     '''
     
     createTable(families, individuals)
+    validate_birth_before_marriage(individuals, families)
