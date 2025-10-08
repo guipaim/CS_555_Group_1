@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, createTable
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -35,6 +35,39 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     def test_all_individuals_have_birthdays(self):
         for ind in self.individuals_data:
             self.assertNotEqual(ind['Birthday'], 'NA')
+
+    def test_marriage_before_death(self):
+        errors = validate_marriage_before_death(self.families_data, self.individuals_data)
+        self.assertEqual(len(errors), 0, 
+                        f"US05 violation: Found {len(errors)} marriage(s) after death")
+    def test_divorce_before_death(self):
+        errors = validate__divorce_before_death(self.families_data, self.individuals_data)
+        self.assertEqual(len(errors), 0,
+                        f"US06 violation: Found {len(errors)} divorce(s) after death")     
+
+    def test_is_data(self):
+        self.assertIsInstance(self.individuals_data, list)
+        self.assertIsInstance(self.families_data, list)
+
+
+    def test_individual_data_not_empty(self):
+        self.assertNotEqual(len(self.individuals_data), 0)
+
+
+    def test_families_data_not_empty(self):
+        self.assertNotEqual(len(self.families_data), 0)
+
+
+    def test_individual_data_object(self):
+        for ind in self.individuals_data:
+            self.assertGreaterEqual(len(ind), 3)
+            self.assertLessEqual(len(ind), 9)
+
+
+    def test_families_data_object(self):
+        for fam in self.families_data:
+            self.assertGreaterEqual(len(fam), 4)
+            self.assertLessEqual(len(fam), 8)        
 
     def test_createTable_executes_successfully(self):
         try:

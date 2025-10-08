@@ -18,6 +18,31 @@ def parse_line(line):
 
     return level, tag, valid, arguments
 
+def parse_line(line):
+    
+    supported_tags = {
+    'INDI', 'NAME', 'SEX', 'BIRT', 'DEAT', 'FAMC', 'FAMS',
+    'FAM', 'MARR', 'HUSB', 'WIFE', 'CHIL', 'DIV', 'DATE',
+    'HEAD', 'TRLR', 'NOTE'
+    }
+    
+    parts = line.strip().split(' ', 2)
+    level = parts[0]
+    tag = parts[1]
+    valid = 'Y' if tag in supported_tags else 'N'
+    arguments = parts[2] if len(parts) > 2 else ''
+
+    return level, tag, valid, arguments
+
+
+def is_bday_in_past(bday_str):
+    bday_str = datetime.strptime(bday_str, "%d %b %Y")
+    today_date_str = datetime.today()
+    
+    if bday_str < today_date_str:
+        return True
+    else:
+        return False
 
 def readGedcomFile(filename):
     
@@ -252,6 +277,12 @@ def createTable(family_list, individual_list):
     print("\nFamilies:")
     print(fam_table)
 
+def verifyAge(individual_list):
+    for ind in individual_list:
+        if ind['Age'] < 0:
+            print("Error: " + ind['Name'] + " died before they were born")
+            individual_list.remove(ind)    
+
 def list_deceased(individual_list):
     """List all deceased individuals"""
     deceasedList = []
@@ -271,6 +302,118 @@ def list_living_married(individual_list):
             living_married_list.append(ind)
             
     return living_married_list
+
+def validate_marriage_before_death(family_list, individual_list):
+    """US05: Marriage should occur before death of either spouse"""
+    errors = []
+    
+    for fam in family_list:
+        married = fam.get('Married', 'NA')
+        husb_id = fam.get('Husband ID', 'NA')
+        wife_id = fam.get('Wife ID', 'NA')
+        
+        if married == 'NA':
+            continue
+        
+        try:
+            marry_date = datetime.strptime(married, "%d %b %Y")
+            
+            # Check husband's death
+            for ind in individual_list:
+                if ind.get('ID') == husb_id:
+                    death = ind.get('Death', 'NA')
+                    if death != 'NA':
+                        death_date = datetime.strptime(death, "%d %b %Y")
+                        if marry_date >= death_date:
+                            errors.append({
+                                'Family ID': fam.get('ID'),
+                                'Spouse ID': husb_id,
+                                'Spouse Name': ind.get('Name', 'NA'),
+                                'Role': 'Husband',
+                                'Marriage Date': married,
+                                'Death Date': death,
+                                'Error': 'Marriage date must be before death date'
+                            })
+                    break
+            
+            # Check wife's death
+            for ind in individual_list:
+                if ind.get('ID') == wife_id:
+                    death = ind.get('Death', 'NA')
+                    if death != 'NA':
+                        death_date = datetime.strptime(death, "%d %b %Y")
+                        if marry_date >= death_date:
+                            errors.append({
+                                'Family ID': fam.get('ID'),
+                                'Spouse ID': wife_id,
+                                'Spouse Name': ind.get('Name', 'NA'),
+                                'Role': 'Wife',
+                                'Marriage Date': married,
+                                'Death Date': death,
+                                'Error': 'Marriage date must be before death date'
+                            })
+                    break
+                    
+        except ValueError:
+            pass
+    
+    return errors
+
+def validate__divorce_before_death(family_list, individual_list):
+    """US06: Divorce can only occur before death of both spouses"""
+    errors = []
+    
+    for fam in family_list:
+        divorced = fam.get('Divorced', 'NA')
+        husb_id = fam.get('Husband ID', 'NA')
+        wife_id = fam.get('Wife ID', 'NA')
+        
+        if divorced == 'NA':
+            continue
+        
+        try:
+            divorce_date = datetime.strptime(divorced, "%d %b %Y")
+            
+            # Check husband's death
+            for ind in individual_list:
+                if ind.get('ID') == husb_id:
+                    death = ind.get('Death', 'NA')
+                    if death != 'NA':
+                        death_date = datetime.strptime(death, "%d %b %Y")
+                        if divorce_date >= death_date:
+                            errors.append({
+                                'Family ID': fam.get('ID'),
+                                'Spouse ID': husb_id,
+                                'Spouse Name': ind.get('Name', 'NA'),
+                                'Role': 'Husband',
+                                'Divorce Date': divorced,
+                                'Death Date': death,
+                                'Error': 'Divorce date must be before death date'
+                            })
+                    break
+            
+            # Check wife's death
+            for ind in individual_list:
+                if ind.get('ID') == wife_id:
+                    death = ind.get('Death', 'NA')
+                    if death != 'NA':
+                        death_date = datetime.strptime(death, "%d %b %Y")
+                        if divorce_date >= death_date:
+                            errors.append({
+                                'Family ID': fam.get('ID'),
+                                'Spouse ID': wife_id,
+                                'Spouse Name': ind.get('Name', 'NA'),
+                                'Role': 'Wife',
+                                'Divorce Date': divorced,
+                                'Death Date': death,
+                                'Error': 'Divorce date must be before death date'
+                            })
+                    break
+                    
+        except ValueError:
+            pass
+    
+    return errors
 
 def validate_birth_before_marriage(individual_list, family_list):
     """Check that birth date precedes marriage date, otherwise throw error"""
@@ -326,4 +469,4 @@ if __name__ == "__main__":
     '''
     
     createTable(families, individuals)
-    validate_birth_before_marriage(individuals, families)
+    
