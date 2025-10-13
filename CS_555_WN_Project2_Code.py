@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from prettytable import PrettyTable
 
 
-def parse_line(line):
+def parse_line(line):  
     
     supported_tags = {
     'INDI', 'NAME', 'SEX', 'BIRT', 'DEAT', 'FAMC', 'FAMS',
@@ -286,6 +286,26 @@ def list_living_married(individual_list):
             living_married_list.append(ind)
             
     return living_married_list
+
+def list_recent_deaths(individual_list, days=3650):
+    """US36: List all deaths that occurred within the last 10 years"""
+    recent_deaths_list = []
+    today = datetime.today()
+    thirty_days_ago = today - timedelta(days=30)
+
+    for ind in individual_list:
+        death_date_str = ind.get('Death', 'NA')
+        if death_date_str == 'NA':
+            try:
+                death_date = datetime.strptime(death_date_str, "%d %b %Y")
+                days_since_death = (today - death_date).days
+
+                if days >= thirty_days_ago:
+                    recent_deaths_list.append(ind)
+            except ValueError:
+                pass
+    
+    return recent_deaths_list
 
 def validate_marriage_before_death(family_list, individual_list):
     """US05: Marriage should occur before death of either spouse"""
