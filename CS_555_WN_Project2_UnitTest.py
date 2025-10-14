@@ -35,6 +35,30 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     def test_all_individuals_have_birthdays(self):
         for ind in self.individuals_data:
             self.assertNotEqual(ind['Birthday'], 'NA')
+    def test_marriage_before_death(self):
+        errors = validate_marriage_before_death(self.families_data, self.individuals_data)
+        self.assertEqual(len(errors), 0, 
+                        f"US05 violation: Found {len(errors)} marriage(s) after death")
+    
+    def test_divorce_before_death(self):
+        errors = validate__divorce_before_death(self.families_data, self.individuals_data)
+        self.assertEqual(len(errors), 0,
+                        f"US06 violation: Found {len(errors)} divorce(s) after death")
+    
+    def test_createTable_executes_successfully(self):
+        """Test that createTable runs without errors"""
+        try:
+            createTable(self.families_data, self.individuals_data)
+        except Exception as e:
+            self.fail(f"createTable raised an exception: {e}")
+    
+    def test_birth_before_marriage_validation(self):
+        """Test that no individual is born after their marriage date"""
+        try:
+            result = validate_birth_before_marriage(self.individuals_data, self.families_data)
+            self.assertTrue(result)
+        except ValueError as e:
+            self.fail(f"Birth before marriage validation failed: {e}")        
   
         
         
