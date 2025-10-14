@@ -68,6 +68,23 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
         for fam in self.families_data:
             self.assertGreaterEqual(len(fam), 4)
             self.assertLessEqual(len(fam), 8)
+
+    def test_list_recent_deaths(self):
+        """Test US36: List recent deaths within 30 days"""
+        from CS_555_WN_Project2_Code import list_recent_deaths
+
+        recent_deaths = list_recent_deaths(self.individuals_data)
+
+        # verify it returns a list
+        self.assertIsInstance(recent_deaths, list)
+        
+        # verify it returned individuals are actually dead
+        for ind in recent_deaths:
+            self.assertEqual(ind.get('Alive'), 'False',
+                f"{ind.get('Name')} is in recent deaths but marked as alive")
+            self.assertNotEqual(ind.get('Death'), 'NA',
+                f"{ind.get('Name')} is in recent deaths but has no death date")
+
         
 if __name__ == "__main__":
     unittest.main()
