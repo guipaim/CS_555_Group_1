@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -74,6 +74,14 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
             createTable(self.families_data, self.individuals_data)
         except Exception as e:
             self.fail(f"createTable raised an exception: {e}")            
+
+    def test_birth_before_marriage_validation(self):
+        """Test that no individual is born after their marriage date"""
+        try:
+            result = validate_birth_before_marriage(self.individuals_data, self.families_data)
+            self.assertTrue(result)
+        except ValueError as e:
+            self.fail(f"Birth before marriage validation failed: {e}")        
   
         
         
