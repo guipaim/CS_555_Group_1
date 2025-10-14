@@ -27,7 +27,7 @@ def is_bday_in_past(bday_str):
         return True
     else:
         return False
-    
+
 def readGedcomFile(filename):
     
     individuals = []
@@ -295,12 +295,12 @@ def list_recent_deaths(individual_list, days=3650):
 
     for ind in individual_list:
         death_date_str = ind.get('Death', 'NA')
-        if death_date_str == 'NA':
+        if death_date_str != 'NA':
             try:
                 death_date = datetime.strptime(death_date_str, "%d %b %Y")
                 days_since_death = (today - death_date).days
 
-                if days >= thirty_days_ago:
+                if days_since_death <= days:
                     recent_deaths_list.append(ind)
             except ValueError:
                 pass
@@ -419,6 +419,35 @@ def validate__divorce_before_death(family_list, individual_list):
             pass
     
     return errors
+
+def validate_birth_before_marriage(individual_list, family_list):
+    """Check that birth date precedes marriage date, otherwise throw error"""
+
+    for ind in individual_list:
+        
+        spouse = ind.get('Spouse')
+        birthday = ind.get('Birthday')
+
+        if spouse == 'NA' or birthday == 'NA' or birthday is None:
+            continue
+
+        birth_date = datetime.strptime(birthday, "%d %b %Y")
+
+        for fam in family_list:
+            if fam.get('Husband ID') == ind.get('ID') or fam.get('Wife ID') == ind.get('ID'):
+                married = fam.get('Married')
+                
+                if married == 'NA' or married is None:
+                    continue
+
+                marriage_date = datetime.strptime(married, "%d %b %Y")
+
+                if birth_date > marriage_date:
+                    raise ValueError(
+                        f"ERROR: Individual {ind.get('ID')} ({ind.get('Name')}) "
+                        f"was born ({ind.get('Birthday')}) after marriage ({fam.get('Married')})"
+                    )
+    return True
 
 
 def display_menu():
@@ -590,7 +619,7 @@ def run_menu(individuals, families):
         else:
             print("\nInvalid choice! Please enter a number between 1 and 6.")
         
-        input("\nPress Enter to continue...")  # Pause before showing menu again
+        input("\nPress Enter to continue...")
     
     
 if __name__ == "__main__":
