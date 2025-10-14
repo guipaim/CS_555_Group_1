@@ -59,8 +59,48 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
             self.assertTrue(result)
         except ValueError as e:
             self.fail(f"Birth before marriage validation failed: {e}")        
-  
+     
+
+    def test_is_data(self):
+        self.assertIsInstance(self.individuals_data, list)
+        self.assertIsInstance(self.families_data, list)
+
+
+    def test_individual_data_not_empty(self):
+        self.assertNotEqual(len(self.individuals_data), 0)
+
+
+    def test_families_data_not_empty(self):
+        self.assertNotEqual(len(self.families_data), 0)
+
+
+    def test_individual_data_object(self):
+        for ind in self.individuals_data:
+            self.assertGreaterEqual(len(ind), 3)
+            self.assertLessEqual(len(ind), 9)
+
+
+    def test_families_data_object(self):
+        for fam in self.families_data:
+            self.assertGreaterEqual(len(fam), 4)
+            self.assertLessEqual(len(fam), 8)
+
+    def test_list_recent_deaths(self):
+        """Test US36: List recent deaths within 30 days"""
+        from CS_555_WN_Project2_Code import list_recent_deaths
+
+        recent_deaths = list_recent_deaths(self.individuals_data)
+
+        # verify it returns a list
+        self.assertIsInstance(recent_deaths, list)
         
+        # verify it returned individuals are actually dead
+        for ind in recent_deaths:
+            self.assertEqual(ind.get('Alive'), 'False',
+                f"{ind.get('Name')} is in recent deaths but marked as alive")
+            self.assertNotEqual(ind.get('Death'), 'NA',
+                f"{ind.get('Name')} is in recent deaths but has no death date")
+
         
 if __name__ == "__main__":
     unittest.main()

@@ -1,10 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from prettytable import PrettyTable
 
 
-
-
-def parse_line(line):
+def parse_line(line):  
     
     supported_tags = {
     'INDI', 'NAME', 'SEX', 'BIRT', 'DEAT', 'FAMC', 'FAMS',
@@ -204,7 +202,7 @@ def createTable(family_list, individual_list):
     family_list.sort(key=lambda x: x['ID'])
 
     ind_table = PrettyTable()
-    #ind_table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Alive", "Death", "Children", "Spouse"]
+    ind_table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Alive", "Death", "Children", "Spouse"]
 
     for ind in individual_list:
         # Format Children with curly braces
@@ -267,7 +265,7 @@ def verifyAge(individual_list):
     for ind in individual_list:
         if ind['Age'] < 0:
             print("Error: " + ind['Name'] + " died before they were born")
-            individual_list.remove(ind)    
+            individual_list.remove(ind)
 
 def list_deceased(individual_list):
     """List all deceased individuals"""
@@ -289,6 +287,26 @@ def list_living_married(individual_list):
             
     return living_married_list
 
+def list_recent_deaths(individual_list, days=3650):
+    """US36: List all deaths that occurred within the last 10 years"""
+    recent_deaths_list = []
+    today = datetime.today()
+    thirty_days_ago = today - timedelta(days=30)
+
+    for ind in individual_list:
+        death_date_str = ind.get('Death', 'NA')
+        if death_date_str != 'NA':
+            try:
+                death_date = datetime.strptime(death_date_str, "%d %b %Y")
+                days_since_death = (today - death_date).days
+
+                if days_since_death <= days:
+                    recent_deaths_list.append(ind)
+            except ValueError:
+                pass
+    
+    return recent_deaths_list
+
 def validate_marriage_before_death(family_list, individual_list):
     """US05: Marriage should occur before death of either spouse"""
     errors = []
@@ -345,117 +363,6 @@ def validate_marriage_before_death(family_list, individual_list):
     
     return errors
 
-
-def validate__divorce_before_death(family_list, individual_list):
-    """US06: Divorce can only occur before death of both spouses"""
-    errors = []
-    
-    for fam in family_list:
-        divorced = fam.get('Divorced', 'NA')
-        husb_id = fam.get('Husband ID', 'NA')
-        wife_id = fam.get('Wife ID', 'NA')
-        
-        if divorced == 'NA':
-            continue
-        
-        try:
-            divorce_date = datetime.strptime(divorced, "%d %b %Y")
-            
-            # Check husband's death
-            for ind in individual_list:
-                if ind.get('ID') == husb_id:
-                    death = ind.get('Death', 'NA')
-                    if death != 'NA':
-                        death_date = datetime.strptime(death, "%d %b %Y")
-                        if divorce_date >= death_date:
-                            errors.append({
-                                'Family ID': fam.get('ID'),
-                                'Spouse ID': husb_id,
-                                'Spouse Name': ind.get('Name', 'NA'),
-                                'Role': 'Husband',
-                                'Divorce Date': divorced,
-                                'Death Date': death,
-                                'Error': 'Divorce date must be before death date'
-                            })
-                    break
-            
-            # Check wife's death
-            for ind in individual_list:
-                if ind.get('ID') == wife_id:
-                    death = ind.get('Death', 'NA')
-                    if death != 'NA':
-                        death_date = datetime.strptime(death, "%d %b %Y")
-                        if divorce_date >= death_date:
-                            errors.append({
-                                'Family ID': fam.get('ID'),
-                                'Spouse ID': wife_id,
-                                'Spouse Name': ind.get('Name', 'NA'),
-                                'Role': 'Wife',
-                                'Divorce Date': divorced,
-                                'Death Date': death,
-                                'Error': 'Divorce date must be before death date'
-                            })
-                    break
-                    
-        except ValueError:
-            pass
-    
-    return errors
-def validate_marriage_before_death(family_list, individual_list):
-    """US05: Marriage should occur before death of either spouse"""
-    errors = []
-    
-    for fam in family_list:
-        married = fam.get('Married', 'NA')
-        husb_id = fam.get('Husband ID', 'NA')
-        wife_id = fam.get('Wife ID', 'NA')
-        
-        if married == 'NA':
-            continue
-        
-        try:
-            marry_date = datetime.strptime(married, "%d %b %Y")
-            
-            # Check husband's death
-            for ind in individual_list:
-                if ind.get('ID') == husb_id:
-                    death = ind.get('Death', 'NA')
-                    if death != 'NA':
-                        death_date = datetime.strptime(death, "%d %b %Y")
-                        if marry_date >= death_date:
-                            errors.append({
-                                'Family ID': fam.get('ID'),
-                                'Spouse ID': husb_id,
-                                'Spouse Name': ind.get('Name', 'NA'),
-                                'Role': 'Husband',
-                                'Marriage Date': married,
-                                'Death Date': death,
-                                'Error': 'Marriage date must be before death date'
-                            })
-                    break
-            
-            # Check wife's death
-            for ind in individual_list:
-                if ind.get('ID') == wife_id:
-                    death = ind.get('Death', 'NA')
-                    if death != 'NA':
-                        death_date = datetime.strptime(death, "%d %b %Y")
-                        if marry_date >= death_date:
-                            errors.append({
-                                'Family ID': fam.get('ID'),
-                                'Spouse ID': wife_id,
-                                'Spouse Name': ind.get('Name', 'NA'),
-                                'Role': 'Wife',
-                                'Marriage Date': married,
-                                'Death Date': death,
-                                'Error': 'Marriage date must be before death date'
-                            })
-                    break
-                    
-        except ValueError:
-            pass
-    
-    return errors
 
 def validate__divorce_before_death(family_list, individual_list):
     """US06: Divorce can only occur before death of both spouses"""
@@ -539,9 +446,180 @@ def validate_birth_before_marriage(individual_list, family_list):
                     raise ValueError(
                         f"ERROR: Individual {ind.get('ID')} ({ind.get('Name')}) "
                         f"was born ({ind.get('Birthday')}) after marriage ({fam.get('Married')})"
-                )
-    return True                        
+                    )
+    return True
 
+
+def display_menu():
+    """Display the main menu options"""
+    print("\n" + "="*60)
+    print(" GEDCOM Analysis Menu")
+    print("="*60)
+    print("1. Display All Individuals and Families")
+    print("2. List Deceased Individuals")
+    print("3. List Living Married Individuals")
+    print("4. Validate Marriage Before Death (US05)")
+    print("5. Validate Divorce Before Death (US06)")
+    print("6. Exit")
+    print("="*60)
+
+
+def display_deceased_table(individual_list):
+    """Display deceased individuals in a formatted table"""
+    deceased = list_deceased(individual_list)
+    
+    if not deceased:
+        print("\nNo deceased individuals found.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Death", "Children", "Spouse"]
+    
+    for ind in deceased:
+        children = ind.get('Children', [])
+        if children == 'NA' or not children:
+            children_display = "NA"
+        elif isinstance(children, list):
+            children_display = "{" + ", ".join([f"'{c}'" for c in children]) + "}"
+        else:
+            children_display = f"{{'{children}'}}"
+        
+        spouse = ind.get('Spouse', 'NA')
+        if spouse == 'NA':
+            spouse_display = "NA"
+        else:
+            spouse_display = f"{{'{spouse}'}}"
+        
+        table.add_row([
+            ind.get('ID', ''),
+            ind.get('Name', ''),
+            ind.get('Gender', ''),
+            ind.get('Birthday', ''),
+            ind.get('Age', ''),
+            ind.get('Death', ''),
+            children_display,
+            spouse_display
+        ])
+    
+    print(f"\nDeceased Individuals ({len(deceased)} found):")
+    print(table)
+
+
+def display_living_married_table(individual_list):
+    """Display living married individuals in a formatted table"""
+    living_married = list_living_married(individual_list)
+    
+    if not living_married:
+        print("\nNo living married individuals found.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Children", "Spouse"]
+    
+    for ind in living_married:
+        children = ind.get('Children', [])
+        if children == 'NA' or not children:
+            children_display = "NA"
+        elif isinstance(children, list):
+            children_display = "{" + ", ".join([f"'{c}'" for c in children]) + "}"
+        else:
+            children_display = f"{{'{children}'}}"
+        
+        spouse = ind.get('Spouse', 'NA')
+        if spouse == 'NA':
+            spouse_display = "NA"
+        else:
+            spouse_display = f"{{'{spouse}'}}"
+        
+        table.add_row([
+            ind.get('ID', ''),
+            ind.get('Name', ''),
+            ind.get('Gender', ''),
+            ind.get('Birthday', ''),
+            ind.get('Age', ''),
+            children_display,
+            spouse_display
+        ])
+    
+    print(f"\nLiving Married Individuals ({len(living_married)} found):")
+    print(table)
+
+
+def display_marriage_validation_errors(family_list, individual_list):
+    """Display marriage before death validation errors"""
+    errors = validate_marriage_before_death(family_list, individual_list)
+    
+    if not errors:
+        print("\nUS05 Validation: No errors found! All marriages occurred before death.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["Family ID", "Spouse ID", "Spouse Name", "Role", "Marriage Date", "Death Date", "Error"]
+    
+    for error in errors:
+        table.add_row([
+            error['Family ID'],
+            error['Spouse ID'],
+            error['Spouse Name'],
+            error['Role'],
+            error['Marriage Date'],
+            error['Death Date'],
+            error['Error']
+        ])
+    
+    print(f"\nUS05 Validation Errors ({len(errors)} found):")
+    print(table)
+
+
+def display_divorce_validation_errors(family_list, individual_list):
+    """Display divorce before death validation errors"""
+    errors = validate__divorce_before_death(family_list, individual_list)
+    
+    if not errors:
+        print("\nUS06 Validation: No errors found! All divorces occurred before death.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["Family ID", "Spouse ID", "Spouse Name", "Role", "Divorce Date", "Death Date", "Error"]
+    
+    for error in errors:
+        table.add_row([
+            error['Family ID'],
+            error['Spouse ID'],
+            error['Spouse Name'],
+            error['Role'],
+            error['Divorce Date'],
+            error['Death Date'],
+            error['Error']
+        ])
+    
+    print(f"\nUS06 Validation Errors ({len(errors)} found):")
+    print(table)
+
+
+def run_menu(individuals, families):
+    """Run the interactive menu"""
+    while True:
+        display_menu()
+        choice = input("\nEnter your choice (1-6): ").strip()
+        
+        if choice == '1':
+            createTable(families, individuals)
+        elif choice == '2':
+            display_deceased_table(individuals)
+        elif choice == '3':
+            display_living_married_table(individuals)
+        elif choice == '4':
+            display_marriage_validation_errors(families, individuals)
+        elif choice == '5':
+            display_divorce_validation_errors(families, individuals)
+        elif choice == '6':
+            print("\nExiting program. Goodbye!")
+            break
+        else:
+            print("\nInvalid choice! Please enter a number between 1 and 6.")
+        
+        input("\nPress Enter to continue...")
     
     
 if __name__ == "__main__":
@@ -555,17 +633,5 @@ if __name__ == "__main__":
     individuals = organizeIndividualData(families, individuals)
     verifyAge(individuals)
     
-    
-    #print individuals and families
-    ''' 
-    print('\nIndividuals:')
-    for ind in individuals:
-        print(ind)
-
-    print('\nFamilies:')
-    for fam in families:
-        print(fam)
-    '''
-    
-    createTable(families, individuals)
-    
+    # Run the interactive menu
+    run_menu(individuals, families)
