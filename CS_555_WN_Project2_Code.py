@@ -399,6 +399,178 @@ def validate__divorce_before_death(family_list, individual_list):
             pass
     
     return errors
+
+
+def display_menu():
+    """Display the main menu options"""
+    print("\n" + "="*60)
+    print(" GEDCOM Analysis Menu")
+    print("="*60)
+    print("1. Display All Individuals and Families")
+    print("2. List Deceased Individuals")
+    print("3. List Living Married Individuals")
+    print("4. Validate Marriage Before Death (US05)")
+    print("5. Validate Divorce Before Death (US06)")
+    print("6. Exit")
+    print("="*60)
+
+
+def display_deceased_table(individual_list):
+    """Display deceased individuals in a formatted table"""
+    deceased = list_deceased(individual_list)
+    
+    if not deceased:
+        print("\nNo deceased individuals found.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Death", "Children", "Spouse"]
+    
+    for ind in deceased:
+        children = ind.get('Children', [])
+        if children == 'NA' or not children:
+            children_display = "NA"
+        elif isinstance(children, list):
+            children_display = "{" + ", ".join([f"'{c}'" for c in children]) + "}"
+        else:
+            children_display = f"{{'{children}'}}"
+        
+        spouse = ind.get('Spouse', 'NA')
+        if spouse == 'NA':
+            spouse_display = "NA"
+        else:
+            spouse_display = f"{{'{spouse}'}}"
+        
+        table.add_row([
+            ind.get('ID', ''),
+            ind.get('Name', ''),
+            ind.get('Gender', ''),
+            ind.get('Birthday', ''),
+            ind.get('Age', ''),
+            ind.get('Death', ''),
+            children_display,
+            spouse_display
+        ])
+    
+    print(f"\nDeceased Individuals ({len(deceased)} found):")
+    print(table)
+
+
+def display_living_married_table(individual_list):
+    """Display living married individuals in a formatted table"""
+    living_married = list_living_married(individual_list)
+    
+    if not living_married:
+        print("\nNo living married individuals found.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Children", "Spouse"]
+    
+    for ind in living_married:
+        children = ind.get('Children', [])
+        if children == 'NA' or not children:
+            children_display = "NA"
+        elif isinstance(children, list):
+            children_display = "{" + ", ".join([f"'{c}'" for c in children]) + "}"
+        else:
+            children_display = f"{{'{children}'}}"
+        
+        spouse = ind.get('Spouse', 'NA')
+        if spouse == 'NA':
+            spouse_display = "NA"
+        else:
+            spouse_display = f"{{'{spouse}'}}"
+        
+        table.add_row([
+            ind.get('ID', ''),
+            ind.get('Name', ''),
+            ind.get('Gender', ''),
+            ind.get('Birthday', ''),
+            ind.get('Age', ''),
+            children_display,
+            spouse_display
+        ])
+    
+    print(f"\nLiving Married Individuals ({len(living_married)} found):")
+    print(table)
+
+
+def display_marriage_validation_errors(family_list, individual_list):
+    """Display marriage before death validation errors"""
+    errors = validate_marriage_before_death(family_list, individual_list)
+    
+    if not errors:
+        print("\nUS05 Validation: No errors found! All marriages occurred before death.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["Family ID", "Spouse ID", "Spouse Name", "Role", "Marriage Date", "Death Date", "Error"]
+    
+    for error in errors:
+        table.add_row([
+            error['Family ID'],
+            error['Spouse ID'],
+            error['Spouse Name'],
+            error['Role'],
+            error['Marriage Date'],
+            error['Death Date'],
+            error['Error']
+        ])
+    
+    print(f"\nUS05 Validation Errors ({len(errors)} found):")
+    print(table)
+
+
+def display_divorce_validation_errors(family_list, individual_list):
+    """Display divorce before death validation errors"""
+    errors = validate__divorce_before_death(family_list, individual_list)
+    
+    if not errors:
+        print("\nUS06 Validation: No errors found! All divorces occurred before death.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["Family ID", "Spouse ID", "Spouse Name", "Role", "Divorce Date", "Death Date", "Error"]
+    
+    for error in errors:
+        table.add_row([
+            error['Family ID'],
+            error['Spouse ID'],
+            error['Spouse Name'],
+            error['Role'],
+            error['Divorce Date'],
+            error['Death Date'],
+            error['Error']
+        ])
+    
+    print(f"\nUS06 Validation Errors ({len(errors)} found):")
+    print(table)
+
+
+def run_menu(individuals, families):
+    """Run the interactive menu"""
+    while True:
+        display_menu()
+        choice = input("\nEnter your choice (1-6): ").strip()
+        
+        if choice == '1':
+            createTable(families, individuals)
+        elif choice == '2':
+            display_deceased_table(individuals)
+        elif choice == '3':
+            display_living_married_table(individuals)
+        elif choice == '4':
+            display_marriage_validation_errors(families, individuals)
+        elif choice == '5':
+            display_divorce_validation_errors(families, individuals)
+        elif choice == '6':
+            print("\nExiting program. Goodbye!")
+            break
+        else:
+            print("\nInvalid choice! Please enter a number between 1 and 6.")
+        
+        input("\nPress Enter to continue...")  # Pause before showing menu again
     
     
 if __name__ == "__main__":
@@ -412,16 +584,5 @@ if __name__ == "__main__":
     individuals = organizeIndividualData(families, individuals)
     verifyAge(individuals)
     
-    
-    #print individuals and families
-    ''' 
-    print('\nIndividuals:')
-    for ind in individuals:
-        print(ind)
-
-    print('\nFamilies:')
-    for fam in families:
-        print(fam)
-    '''
-    
-    createTable(families, individuals)
+    # Run the interactive menu
+    run_menu(individuals, families)
