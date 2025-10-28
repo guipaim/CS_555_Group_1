@@ -460,7 +460,9 @@ def display_menu():
     print("3. List Living Married Individuals")
     print("4. Validate Marriage Before Death (US05)")
     print("5. Validate Divorce Before Death (US06)")
-    print("6. Exit")
+    print("6. Validate Marriage After 14 (US10)")
+    print("7. Validate No Bigamy (US11)")
+    print("8. Exit")
     print("="*60)
 
 
@@ -595,6 +597,65 @@ def display_divorce_validation_errors(family_list, individual_list):
     
     print(f"\nUS06 Validation Errors ({len(errors)} found):")
     print(table)
+
+
+def display_bigamy_validation_errors(family_list, individual_list):
+    """Display bigamy validation errors"""
+    errors = validate_bigamy(family_list, individual_list)
+    
+    if not errors:
+        print("\nUS11 Validation: No errors found! No cases of bigamy detected.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["Person ID", "Person Name", "Role", "First Family", "First Marriage", 
+                        "Second Family", "Second Marriage", "Error"]
+    
+    for error in errors:
+        # Handle cases where first marriage might have ended
+        first_end = error.get('First End Date', 'Ongoing')
+        
+        table.add_row([
+            error['Person ID'],
+            error['Person Name'],
+            error['Role'],
+            error['First Family ID'],
+            error['First Marriage Date'],
+            error['Second Family ID'],
+            error['Second Marriage Date'],
+            error['Error']
+        ])
+    
+    print(f"\nUS11 Validation Errors ({len(errors)} found):")
+    print(table)
+
+
+def display_marriage_age_validation_errors(family_list, individual_list):
+    """Display marriage after 14 validation errors"""
+    errors = validate_US10_marriage_after_14(family_list, individual_list)
+    
+    if not errors:
+        print("\nUS10 Validation: No errors found! All marriages occurred after both spouses were 14 years old.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["Family ID", "Spouse ID", "Spouse Name", "Role", "Birth Date", 
+                        "Marriage Date", "Age at Marriage", "Error"]
+    
+    for error in errors:
+        table.add_row([
+            error['Family ID'],
+            error['Spouse ID'],
+            error['Spouse Name'],
+            error['Role'],
+            error['Birth Date'],
+            error['Marriage Date'],
+            error['Age at Marriage'],
+            error['Error']
+        ])
+    
+    print(f"\nUS10 Validation Errors ({len(errors)} found):")
+    print(table)
 def validate_US10_marriage_after_14(family_list, individual_list):
     """
     US10: Marriage after 14
@@ -656,11 +717,129 @@ def validate_US10_marriage_after_14(family_list, individual_list):
             pass
     
     return errors
+
+def validate_bigamy(family_list, individual_list):
+    """
+    US11: No bigamy
+    Marriage should not occur during marriage to another spouse
+    """
+    errors = []
+    
+    # Group families by each individual (both husbands and wives)
+    individual_marriages = {}
+    
+    # Collect all marriages for each individual
+    for fam in family_list:
+        fam_id = fam.get('ID', 'NA')
+        married = fam.get('Married', 'NA')
+        divorced = fam.get('Divorced', 'NA')
+        husb_id = fam.get('Husband ID', 'NA')
+        wife_id = fam.get('Wife ID', 'NA')
+        
+        if married == 'NA':
+            continue
+        
+        try:
+            marry_date = datetime.strptime(married, "%d %b %Y")
+            divorce_date = None
+            if divorced != 'NA':
+                divorce_date = datetime.strptime(divorced, "%d %b %Y")
+            
+            # Add marriage for husband
+            if husb_id != 'NA':
+                if husb_id not in individual_marriages:
+                    individual_marriages[husb_id] = []
+                individual_marriages[husb_id].append({
+                    'Family ID': fam_id,
+                    'Marriage Date': marry_date,
+                    'Divorce Date': divorce_date,
+                    'Spouse ID': wife_id,
+                    'Role': 'Husband'
+                })
+            
+            # Add marriage for wife
+            if wife_id != 'NA':
+                if wife_id not in individual_marriages:
+                    individual_marriages[wife_id] = []
+                individual_marriages[wife_id].append({
+                    'Family ID': fam_id,
+                    'Marriage Date': marry_date,
+                    'Divorce Date': divorce_date,
+                    'Spouse ID': husb_id,
+                    'Role': 'Wife'
+                })
+                
+        except ValueError:
+            continue
+    
+    # Check for overlapping marriages for each individual
+    for person_id, marriages in individual_marriages.items():
+        if len(marriages) < 2:
+            continue
+        
+        # Sort marriages by marriage date
+        marriages.sort(key=lambda x: x['Marriage Date'])
+        
+        # Get person's name
+        person_name = 'NA'
+        for ind in individual_list:
+            if ind.get('ID') == person_id:
+                person_name = ind.get('Name', 'NA')
+                break
+        
+        # Check for overlapping marriage periods
+        for i in range(len(marriages)):
+            for j in range(i + 1, len(marriages)):
+                marriage1 = marriages[i]
+                marriage2 = marriages[j]
+                
+                # Determine end date of first marriage
+                end_date1 = marriage1['Divorce Date']
+                if end_date1 is None:
+                    # If no divorce, check if person is deceased
+                    for ind in individual_list:
+                        if ind.get('ID') == person_id and ind.get('Death', 'NA') != 'NA':
+                            try:
+                                end_date1 = datetime.strptime(ind.get('Death'), "%d %b %Y")
+                            except ValueError:
+                                pass
+                            break
+                
+                # If first marriage has no end date (still married or alive), 
+                # any subsequent marriage is bigamy
+                if end_date1 is None:
+                    if marriage2['Marriage Date'] > marriage1['Marriage Date']:
+                        errors.append({
+                            'Person ID': person_id,
+                            'Person Name': person_name,
+                            'Role': marriage1['Role'],
+                            'First Family ID': marriage1['Family ID'],
+                            'First Marriage Date': marriage1['Marriage Date'].strftime("%d %b %Y"),
+                            'Second Family ID': marriage2['Family ID'],
+                            'Second Marriage Date': marriage2['Marriage Date'].strftime("%d %b %Y"),
+                            'Error': 'Bigamy - married while still married to another spouse'
+                        })
+                
+                # If first marriage ended after second marriage started, it's bigamy
+                elif marriage2['Marriage Date'] < end_date1:
+                    errors.append({
+                        'Person ID': person_id,
+                        'Person Name': person_name,
+                        'Role': marriage1['Role'],
+                        'First Family ID': marriage1['Family ID'],
+                        'First Marriage Date': marriage1['Marriage Date'].strftime("%d %b %Y"),
+                        'First End Date': end_date1.strftime("%d %b %Y"),
+                        'Second Family ID': marriage2['Family ID'],
+                        'Second Marriage Date': marriage2['Marriage Date'].strftime("%d %b %Y"),
+                        'Error': 'Bigamy - married before previous marriage ended'
+                    })
+    
+    return errors
 def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-6): ").strip()
+        choice = input("\nEnter your choice (1-8): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -673,10 +852,14 @@ def run_menu(individuals, families):
         elif choice == '5':
             display_divorce_validation_errors(families, individuals)
         elif choice == '6':
+            display_marriage_age_validation_errors(families, individuals)
+        elif choice == '7':
+            display_bigamy_validation_errors(families, individuals)
+        elif choice == '8':
             print("\nExiting program. Goodbye!")
             break
         else:
-            print("\nInvalid choice! Please enter a number between 1 and 6.")
+            print("\nInvalid choice! Please enter a number between 1 and 8.")
         
         input("\nPress Enter to continue...")
     
