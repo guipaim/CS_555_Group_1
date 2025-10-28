@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_bigamy, validate_US10_marriage_after_14
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -100,6 +100,183 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
                 f"{ind.get('Name')} is in recent deaths but marked as alive")
             self.assertNotEqual(ind.get('Death'), 'NA',
                 f"{ind.get('Name')} is in recent deaths but has no death date")
+
+    def test_marriage_after_14(self):
+        """Test US10: Marriage after 14 - Marriage should be at least 14 years after birth"""
+        errors = validate_US10_marriage_after_14(self.families_data, self.individuals_data)
+        
+        # Verify it returns a list
+        self.assertIsInstance(errors, list)
+        
+        # If there are errors, verify they are properly formatted
+        for error in errors:
+            self.assertIn('Family ID', error)
+            self.assertIn('Spouse ID', error)
+            self.assertIn('Spouse Name', error)
+            self.assertIn('Role', error)
+            self.assertIn('Birth Date', error)
+            self.assertIn('Marriage Date', error)
+            self.assertIn('Age at Marriage', error)
+            self.assertIn('Error', error)
+            
+            # Verify age at marriage is indeed less than 14
+            self.assertLess(error['Age at Marriage'], 14,
+                f"Error reported for {error['Spouse Name']} but age at marriage is {error['Age at Marriage']}")
+            
+            # Verify role is valid
+            self.assertIn(error['Role'], ['Husband', 'Wife'])
+        
+        # For this test data, we expect no violations (based on earlier run results)
+        self.assertEqual(len(errors), 0, 
+                        f"US10 violation: Found {len(errors)} marriage(s) before age 14")
+
+    def test_no_bigamy(self):
+        """Test US11: No bigamy - Marriage should not occur during marriage to another spouse"""
+        errors = validate_bigamy(self.families_data, self.individuals_data)
+        
+        # Verify it returns a list
+        self.assertIsInstance(errors, list)
+        
+        # If there are errors, verify they are properly formatted
+        for error in errors:
+            self.assertIn('Person ID', error)
+            self.assertIn('Person Name', error)
+            self.assertIn('Role', error)
+            self.assertIn('First Family ID', error)
+            self.assertIn('First Marriage Date', error)
+            self.assertIn('Second Family ID', error)
+            self.assertIn('Second Marriage Date', error)
+            self.assertIn('Error', error)
+            
+            # Verify role is valid
+            self.assertIn(error['Role'], ['Husband', 'Wife'])
+            
+            # Verify different family IDs (can't be bigamous with same family)
+            self.assertNotEqual(error['First Family ID'], error['Second Family ID'],
+                f"Bigamy error reported for same family: {error['First Family ID']}")
+        
+        # For this test data, we expect no violations (based on earlier run results)
+        self.assertEqual(len(errors), 0,
+                        f"US11 violation: Found {len(errors)} case(s) of bigamy")
+
+    def test_marriage_after_14_with_mock_data(self):
+        """Test US10 with mock data that should trigger violations"""
+        # Create mock data for testing violation cases
+        mock_families = [
+            {
+                'ID': 'F001',
+                'Married': '15 JUN 2000',
+                'Divorced': 'NA',
+                'Husband ID': 'I001',
+                'Husband Name': 'John Young',
+                'Wife ID': 'I002', 
+                'Wife Name': 'Jane Young',
+                'Children': []
+            }
+        ]
+        
+        mock_individuals = [
+            {
+                'ID': 'I001',
+                'Name': 'John Young',
+                'Gender': 'M',
+                'Birthday': '1 JAN 1990',  # Age 10 at marriage - should trigger error
+                'Age': 34,
+                'Alive': 'True',
+                'Death': 'NA',
+                'Children': [],
+                'Spouse': 'I002'
+            },
+            {
+                'ID': 'I002',
+                'Name': 'Jane Young', 
+                'Gender': 'F',
+                'Birthday': '15 MAR 1985',  # Age 15 at marriage - should be OK
+                'Age': 39,
+                'Alive': 'True',
+                'Death': 'NA',
+                'Children': [],
+                'Spouse': 'I001'
+            }
+        ]
+        
+        errors = validate_US10_marriage_after_14(mock_families, mock_individuals)
+        
+        # Should find exactly 1 error (for John who was 10 at marriage)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]['Spouse ID'], 'I001')
+        self.assertEqual(errors[0]['Spouse Name'], 'John Young')
+        self.assertEqual(errors[0]['Role'], 'Husband')
+
+    def test_bigamy_with_mock_data(self):
+        """Test US11 with mock data that should trigger bigamy violations"""
+        # Create mock data for testing bigamy cases
+        mock_families = [
+            {
+                'ID': 'F001',
+                'Married': '15 JUN 2000',
+                'Divorced': 'NA',  # Never divorced - still married
+                'Husband ID': 'I001',
+                'Husband Name': 'John Bigamist',
+                'Wife ID': 'I002',
+                'Wife Name': 'Jane First',
+                'Children': []
+            },
+            {
+                'ID': 'F002', 
+                'Married': '20 AUG 2005',  # Married while still married to Jane
+                'Divorced': 'NA',
+                'Husband ID': 'I001',  # Same person married twice
+                'Husband Name': 'John Bigamist',
+                'Wife ID': 'I003',
+                'Wife Name': 'Sarah Second',
+                'Children': []
+            }
+        ]
+        
+        mock_individuals = [
+            {
+                'ID': 'I001',
+                'Name': 'John Bigamist',
+                'Gender': 'M',
+                'Birthday': '1 JAN 1970',
+                'Age': 54,
+                'Alive': 'True',
+                'Death': 'NA',
+                'Children': [],
+                'Spouse': 'I002'  # Can only list one spouse
+            },
+            {
+                'ID': 'I002',
+                'Name': 'Jane First',
+                'Gender': 'F', 
+                'Birthday': '15 MAR 1975',
+                'Age': 49,
+                'Alive': 'True',
+                'Death': 'NA',
+                'Children': [],
+                'Spouse': 'I001'
+            },
+            {
+                'ID': 'I003',
+                'Name': 'Sarah Second',
+                'Gender': 'F',
+                'Birthday': '10 JUL 1980',
+                'Age': 44,
+                'Alive': 'True', 
+                'Death': 'NA',
+                'Children': [],
+                'Spouse': 'I001'
+            }
+        ]
+        
+        errors = validate_bigamy(mock_families, mock_individuals)
+        
+        # Should find exactly 1 error (for John's overlapping marriages)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]['Person ID'], 'I001')
+        self.assertEqual(errors[0]['Person Name'], 'John Bigamist')
+        self.assertIn('bigamy', errors[0]['Error'].lower())
 
         
 if __name__ == "__main__":
