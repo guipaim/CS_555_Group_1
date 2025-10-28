@@ -595,8 +595,67 @@ def display_divorce_validation_errors(family_list, individual_list):
     
     print(f"\nUS06 Validation Errors ({len(errors)} found):")
     print(table)
-
-
+def validate_US10_marriage_after_14(family_list, individual_list):
+    """
+    US10: Marriage after 14
+    Marriage should be at least 14 years after birth of both spouses
+    """
+    errors = []
+    
+    for fam in family_list:
+        married = fam.get('Married', 'NA')
+        husb_id = fam.get('Husband ID', 'NA')
+        wife_id = fam.get('Wife ID', 'NA')
+        
+        if married == 'NA':
+            continue
+        
+        try:
+            marry_date = datetime.strptime(married, "%d %b %Y")
+            
+            # Check husband's age at marriage
+            for ind in individual_list:
+                if ind.get('ID') == husb_id:
+                    birth = ind.get('Birthday', 'NA')
+                    if birth != 'NA':
+                        birth_date = datetime.strptime(birth, "%d %b %Y")
+                        age_at_marriage = (marry_date - birth_date).days / 365.25
+                        if age_at_marriage < 14:
+                            errors.append({
+                                'Family ID': fam.get('ID'),
+                                'Spouse ID': husb_id,
+                                'Spouse Name': ind.get('Name', 'NA'),
+                                'Role': 'Husband',
+                                'Birth Date': birth,
+                                'Marriage Date': married,
+                                'Age at Marriage': round(age_at_marriage, 1),
+                                'Error': 'Marriage occurred before spouse was 14 years old'
+                            })
+                    break
+            
+            # Check wife's age at marriage
+            for ind in individual_list:
+                if ind.get('ID') == wife_id:
+                    birth = ind.get('Birthday', 'NA')
+                    if birth != 'NA':
+                        birth_date = datetime.strptime(birth, "%d %b %Y")
+                        age_at_marriage = (marry_date - birth_date).days / 365.25
+                        if age_at_marriage < 14:
+                            errors.append({
+                                'Family ID': fam.get('ID'),
+                                'Spouse ID': wife_id,
+                                'Spouse Name': ind.get('Name', 'NA'),
+                                'Role': 'Wife',
+                                'Birth Date': birth,
+                                'Marriage Date': married,
+                                'Age at Marriage': round(age_at_marriage, 1),
+                                'Error': 'Marriage occurred before spouse was 14 years old'
+                            })
+                    break
+        except ValueError:
+            pass
+    
+    return errors
 def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
