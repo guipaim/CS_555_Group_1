@@ -460,7 +460,8 @@ def display_menu():
     print("3. List Living Married Individuals")
     print("4. Validate Marriage Before Death (US05)")
     print("5. Validate Divorce Before Death (US06)")
-    print("6. Exit")
+    print("6. List All Single Individuals Over 30 Years Old")
+    print("7. Exit")
     print("="*60)
 
 
@@ -601,7 +602,7 @@ def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-6): ").strip()
+        choice = input("\nEnter your choice (1-7): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -614,14 +615,26 @@ def run_menu(individuals, families):
         elif choice == '5':
             display_divorce_validation_errors(families, individuals)
         elif choice == '6':
+            single_list = listAllSingleIndividuals(individuals)
+            print("\nList of Single Individuals over 30 years old:" )
+            for ind in single_list:
+                print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Age: {ind.get('Age')})")
+        elif choice == '7':
             print("\nExiting program. Goodbye!")
             break
         else:
-            print("\nInvalid choice! Please enter a number between 1 and 6.")
-        
+            print("\nInvalid choice! Please enter a number between 1 and 7.")
+
         input("\nPress Enter to continue...")
-    
-    
+  
+def listAllSingleIndividuals(individual_list):
+    single_individuals = []
+    for ind in individual_list:
+        if ind.get('Spouse') == 'NA' and ind.get('Alive') == 'True' and ind.get('Age', 0) > 30:
+            single_individuals.append(ind)
+    return single_individuals
+
+
 if __name__ == "__main__":
     #readGedFile
     individuals, families = readGedcomFile("Gedcom-file.ged")
