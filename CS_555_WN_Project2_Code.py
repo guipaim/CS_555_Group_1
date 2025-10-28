@@ -615,6 +615,14 @@ def run_menu(individuals, families):
             display_marriage_validation_errors(families, individuals)
         elif choice == '5':
             display_divorce_validation_errors(families, individuals)
+        elif choice == '6':
+            single_individuals = listAllSingleIndividuals(individuals)
+            if not single_individuals:
+                print("No single individuals found.")
+            else:
+                print("\nList of Single Individuals (Age > 30):")
+                for ind in single_individuals:
+                    print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Age: {ind.get('Age')})")
         elif choice == '7':
             print("\nList of Individuals That Have The Same Birthday:" )
             bday_list = listMultipleBdays(individuals)
