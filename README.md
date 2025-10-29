@@ -78,12 +78,6 @@ python CS_555_WN_Project2_Code.py
 - **Documentation**: Add comments for complex logic
 - **Branch Naming**: Use `feature/`, `bugfix/`, or `hotfix/` prefixes
 
-### Current Team Roles
-
-- **Lorraine**: Parsing logic & table formatting
-- **Michael**: Individual statistics & data organization  
-- **Guilherme**: Repository management & PR coordination
-- **Richard**: UI/table output & display formatting
 
 ## 🏗️ Code Structure
 
@@ -109,16 +103,6 @@ This project follows CS555 Agile Development practices using the **Project Sprin
 - **Burndown**: Visual progress tracking
 - **Sprint1-4**: Individual sprint planning & execution
 - **Stories**: Master list of available user stories
-
-### Sprint 1 Status ✅ COMPLETED
-**Requirements Met:**
-- ✅ GitHub repository setup with team collaboration
-- ✅ GEDCOM file parsing with NOTE record containing repository info
-- ✅ Data stored in lists/collections (individuals < 5000, families < 1000)
-- ✅ Individual output: ID, Name, Gender, Birthday, Age, Alive, Death, Children, Spouse
-- ✅ Family output: ID, Married, Divorced, Husband ID, Husband Name, Wife ID, Wife Name, Children
-- ✅ Sorted output by unique identifiers
-- ✅ PrettyTable formatting matching example specifications
 
 ## 📝 Supported GEDCOM Tags
 
