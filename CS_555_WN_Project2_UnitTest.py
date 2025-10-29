@@ -23,6 +23,10 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
         for ind in self.individuals_data:
             self.assertIsInstance(ind['Age'], int)
             self.assertGreaterEqual(ind['Age'], 0)
+            
+    def test_death_is_valid(self):
+        for ind in self.individuals_data:
+            self.assertIsInstance(ind['Death'], str)
     
     def test_all_individuals_dead_or_alive(self):
         for ind in self.individuals_data:

@@ -133,6 +133,38 @@ def organizeFamilyData(family_list, individual_list):
     return family_list
 
 
+def calculateAge(birthday_str, death_str):
+    try:
+        birthday = datetime.strptime(birthday_str,"%d %b %Y")
+        if death_str == 'NA':
+           death = datetime.today() 
+        else:
+            death = datetime.strptime(death_str,"%d %b %Y")  
+    except (ValueError, TypeError):
+        return 0
+    
+    return death.year - birthday.year - ((death.month,death.day) < (birthday.month, birthday.day))
+    
+    
+
+
+def findFamilyData(individual_id, family_list_data):
+    spouse = 'NA'
+    children = []
+    
+    for fam in family_list_data:
+        if fam.get('Husband ID') == individual_id or fam.get('Wife ID') == individual_id:
+            children = 'NA' if 'Children' not in fam else fam.get('Children', [])
+
+            if fam.get('Husband ID') == individual_id:
+                spouse = fam.get('Wife ID', 'NA')
+            elif fam.get('Wife ID') == individual_id:
+                spouse = fam.get('Husband ID', 'NA')
+
+            break
+
+    return spouse, children
+
 def organizeIndividualData(family_list, individual_list):
     #sort individuals by ID 
 
@@ -144,45 +176,16 @@ def organizeIndividualData(family_list, individual_list):
         name = ind.get('NAME', 'NA')
         gender = ind.get('SEX', 'NA')
         bday = ind.get('BIRT', 'NA')
-
-        #get the age
         bday_copy = bday
         if is_bday_in_past(bday_copy):
-            # Convert birth string to datetime
-            bday_copy = datetime.strptime(bday_copy, "%d %b %Y")
-
+            
             death = ind.get('DEAT', 'NA')
-
-            if 'DEAT' in ind:
-
-
-                death_copy = death
-                death_copy = datetime.strptime(death_copy, "%d %b %Y")
-
-                age = death_copy.year - bday_copy.year - ((death_copy.month, death_copy.day) < (bday_copy.month, bday_copy.day))
-            else:
-                today = datetime.today()
-                age = today.year - bday_copy.year - ((today.month, today.day) < (bday_copy.month, bday_copy.day))
-
+            death_copy = death
+            age = calculateAge(bday_copy, death_copy)
             alive = 'False' if 'DEAT' in ind else 'True'
-
-
-            spouse = 'NA' if 'FAMS' not in ind else ind.get('FAMS', [])
-
-
-            children = []
-
-            for fam in family_list:
-                if fam.get('Husband ID') == ind_id or fam.get('Wife ID') == ind_id:
-                    children = 'NA' if 'Children' not in fam else fam.get('Children', [])
-
-                    if fam.get('Husband ID') == ind_id:
-                        spouse = fam.get('Wife ID', 'NA')
-                    elif fam.get('Wife ID') == ind_id:
-                        spouse = fam.get('Husband ID', 'NA')
-
-                    break
-                
+        
+            spouse, children = findFamilyData(ind_id, family_list)
+          
             ind.clear()
             ind['ID'] = ind_id
             ind['Name'] = name
