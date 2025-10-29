@@ -582,9 +582,10 @@ def display_menu():
     print("5. Validate Divorce Before Death (US06)")
     print("6. Validate Marriage After 14 (US10)")
     print("7. Validate No Bigamy (US11)")
-    print("8. List All Single Individuals Over 30 Years Old")
-    print("9. List Individuals with the Same Birthday")
-    print("10. Exit")
+    print("8. Validate Parent Age Limits (US12)")
+    print("9. List All Single Individuals Over 30 Years Old")
+    print("10. List Individuals with the Same Birthday")
+    print("11. Exit")
     print("="*60)
 
 
@@ -749,6 +750,49 @@ def display_bigamy_validation_errors(family_list, individual_list):
         ])
     
     print(f"\nUS11 Validation Errors ({len(errors)} found):")
+    print(table)
+
+
+def display_parent_age_validation_errors(family_list, individual_list):
+    """Display parent age limits validation errors"""
+    errors = validate_parent_age_limits(family_list, individual_list)
+    
+    if not errors:
+        print("\nUS12 Validation: No errors found! All parents are within acceptable age limits.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["Family ID", "Parent ID", "Parent Name", "Child ID", "Child Name", 
+                        "Parent Birthday", "Child Birthday", "Age Difference", "Error"]
+    
+    for error in errors:
+        # Handle both mother and father errors
+        if 'Mother ID' in error:
+            table.add_row([
+                error['Family ID'],
+                error['Mother ID'],
+                error['Mother Name'],
+                error['Child ID'],
+                error['Child Name'],
+                error['Mother Birthday'],
+                error['Child Birthday'],
+                error['Age Difference'],
+                error['Error']
+            ])
+        elif 'Father ID' in error:
+            table.add_row([
+                error['Family ID'],
+                error['Father ID'],
+                error['Father Name'],
+                error['Child ID'],
+                error['Child Name'],
+                error['Father Birthday'],
+                error['Child Birthday'],
+                error['Age Difference'],
+                error['Error']
+            ])
+    
+    print(f"\nUS12 Validation Errors ({len(errors)} found):")
     print(table)
 
 
@@ -1048,7 +1092,7 @@ def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-10): ").strip()
+        choice = input("\nEnter your choice (1-11): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -1065,6 +1109,8 @@ def run_menu(individuals, families):
         elif choice == '7':
             display_bigamy_validation_errors(families, individuals)
         elif choice == '8':
+            display_parent_age_validation_errors(families, individuals)
+        elif choice == '9':
             single_individuals = listAllSingleIndividuals(individuals)
             if not single_individuals:
                 print("No single individuals found.")
@@ -1072,16 +1118,16 @@ def run_menu(individuals, families):
                 print("\nList of Single Individuals (Age > 30):")
                 for ind in single_individuals:
                     print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Age: {ind.get('Age')})")
-        elif choice == '9':
+        elif choice == '10':
             print("\nList of Individuals That Have The Same Birthday:" )
             bday_list = listMultipleBdays(individuals)
             for ind in bday_list:
                 print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
-        elif choice == '10':
+        elif choice == '11':
             print("\nExiting program. Goodbye!")
             break
         else:
-            print("\nInvalid choice! Please enter a number between 1 and 10.")
+            print("\nInvalid choice! Please enter a number between 1 and 11.")
 
         input("\nPress Enter to continue...")
   
