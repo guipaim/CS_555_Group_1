@@ -957,6 +957,93 @@ def validate_bigamy(family_list, individual_list):
                     })
     
     return errors
+
+
+def validate_parent_age_limits(families_data, individuals_data):
+    """
+    US12: Parents too old
+    Mother should be less than 60 years older than her children and father should be less than 80 years older than his children
+    Returns list of errors found
+    """
+    errors = []
+    
+    # Create dictionary for individuals
+    ind_dict = {ind['ID']: ind for ind in individuals_data}
+    
+    for family in families_data:
+        husband_id = family.get('Husband ID')
+        wife_id = family.get('Wife ID')
+        children = family.get('Children', [])
+        
+        if not children:
+            continue
+        
+        # Get father
+        father = None
+        father_birth = None
+        if husband_id and husband_id in ind_dict:
+            father = ind_dict[husband_id]
+            if father.get('Birthday') != 'NA':
+                father_birth = datetime.strptime(father['Birthday'], '%d %b %Y')
+        
+        # Get mother
+        mother = None
+        mother_birth = None
+        if wife_id and wife_id in ind_dict:
+            mother = ind_dict[wife_id]
+            if mother.get('Birthday') != 'NA':
+                mother_birth = datetime.strptime(mother['Birthday'], '%d %b %Y')
+        
+        # Check each child
+        for child_id in children:
+            if child_id not in ind_dict:
+                continue
+                
+            child = ind_dict[child_id]
+            child_birth_date = child.get('Birthday')
+            
+            if child_birth_date == 'NA':
+                continue
+                
+            child_birth = datetime.strptime(child_birth_date, '%d %b %Y')
+            
+            # Check mother's age
+            if mother_birth:
+                age_diff_mother = (child_birth.year - mother_birth.year - 
+                                  ((child_birth.month, child_birth.day) < (mother_birth.month, mother_birth.day)))
+                if age_diff_mother >= 60:
+                    errors.append({
+                        'Family ID': family.get('ID'),
+                        'Mother ID': wife_id,
+                        'Mother Name': mother.get('Name', 'NA'),
+                        'Child ID': child_id,
+                        'Child Name': child.get('Name', 'NA'),
+                        'Mother Birthday': mother['Birthday'],
+                        'Child Birthday': child_birth_date,
+                        'Age Difference': age_diff_mother,
+                        'Error': f"US12: Mother {mother.get('Name', 'NA')} is {age_diff_mother} years older than her child {child.get('Name', 'NA')} (should be less than 60)"
+                    })
+            
+            # Check father's age
+            if father_birth:
+                age_diff_father = (child_birth.year - father_birth.year - 
+                                  ((child_birth.month, child_birth.day) < (father_birth.month, father_birth.day)))
+                if age_diff_father >= 80:
+                    errors.append({
+                        'Family ID': family.get('ID'),
+                        'Father ID': husband_id,
+                        'Father Name': father.get('Name', 'NA'),
+                        'Child ID': child_id,
+                        'Child Name': child.get('Name', 'NA'),
+                        'Father Birthday': father['Birthday'],
+                        'Child Birthday': child_birth_date,
+                        'Age Difference': age_diff_father,
+                        'Error': f"US12: Father {father.get('Name', 'NA')} is {age_diff_father} years older than his child {child.get('Name', 'NA')} (should be less than 80)"
+                    })
+    
+    return errors
+
+
 def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
