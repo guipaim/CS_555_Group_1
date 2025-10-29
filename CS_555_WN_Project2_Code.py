@@ -269,6 +269,8 @@ def verifyAge(individual_list):
         if ind['Age'] < 0:
             print("Error: " + ind['Name'] + " died before they were born")
             individual_list.remove(ind)
+    
+    validate__death(individual_list)
 
 def list_deceased(individual_list):
     """List all deceased individuals"""
@@ -420,6 +422,49 @@ def validate__divorce_before_death(family_list, individual_list):
                     
         except ValueError:
             pass
+    
+    return errors
+
+def validate__death(individual_list):
+
+    errors = []
+    
+    for ind in individual_list:
+
+        try:
+        
+            death = ind.get('Death', 'NA')
+            birthday = ind.get('Birthday', 'NA')
+            if death != 'NA' and birthday != 'NA':
+                death_date = datetime.strptime(death, "%d %b %Y")
+                birth_date = datetime.strptime(birthday, "%d %b %Y")
+                delta = death_date - birth_date
+                years = delta.days / 365.25
+                if years >= 150:
+                    errors.append({
+                        'Name': ind.get('Name'),
+                        'Birth Date': birthday,
+                        'Death Date': death,
+                        'Error': 'Death happened after more than 150 years'
+                    })
+            else:
+                today = datetime.today()
+                birth_date = datetime.strptime(birthday, "%d %b %Y")
+                delta = today - birth_date
+                years = delta.days / 365.25
+                if years >= 150:
+                    errors.append({
+                        'Name': ind.get('Name'),
+                        'Birth Date': birthday,
+                        'Current Date': today,
+                        'Error': 'Individual is more than 150 years old'
+                    })
+                    
+        except ValueError:
+            pass
+        
+    for error in errors:
+        print(error)
     
     return errors
 
