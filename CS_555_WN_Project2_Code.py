@@ -449,6 +449,123 @@ def validate_birth_before_marriage(individual_list, family_list):
                     )
     return True
 
+def validate_birth_before_marriage_of_parents(families_data, individuals_data):
+    """
+    US08: Birth before marriage of parents
+    Child should be born after marriage of parents and not more than 9 months after their divorce
+    Returns list of errors found
+    """
+    errors = []
+    
+    
+    ind_dict = {ind['ID']: ind for ind in individuals_data}
+    
+    for family in families_data:
+        marriage_date = family.get('Married')
+        divorce_date = family.get('Divorced')
+        children = family.get('Children', [])
+        
+        
+        if marriage_date == 'NA' or not children:
+            continue
+            
+        marriage_dt = datetime.strptime(marriage_date, '%d %b %Y')
+        
+        
+        divorce_plus_9_months = None
+        if divorce_date != 'NA':
+            divorce_dt = datetime.strptime(divorce_date, '%d %b %Y')
+            divorce_plus_9_months = divorce_dt + timedelta(days=270)  # approximately 9 months
+        
+        for child_id in children:
+            if child_id not in ind_dict:
+                continue
+                
+            child = ind_dict[child_id]
+            birth_date = child.get('Birthday')
+            
+            if birth_date == 'NA':
+                continue
+                
+            birth_dt = datetime.strptime(birth_date, '%d %b %Y')
+            
+            
+            if birth_dt < marriage_dt:
+                errors.append(f"ERROR: US08: Child {child['Name']} ({child_id}) born {birth_date} before parents' marriage {marriage_date} in family {family['ID']}")
+            
+            
+            if divorce_plus_9_months and birth_dt > divorce_plus_9_months:
+                errors.append(f"ERROR: US08: Child {child['Name']} ({child_id}) born {birth_date} more than 9 months after parents' divorce {divorce_date} in family {family['ID']}")
+    
+    
+    for error in errors:
+        print(error)
+    
+    return errors
+
+
+def validate_birth_before_death_of_parents(families_data, individuals_data):
+    """
+    US09: Birth before death of parents
+    Child should be born before death of mother and before 9 months after death of father
+    Returns list of errors found
+    """
+    errors = []
+    
+    
+    ind_dict = {ind['ID']: ind for ind in individuals_data}
+    
+    for family in families_data:
+        husband_id = family.get('Husband ID')
+        wife_id = family.get('Wife ID')
+        children = family.get('Children', [])
+        
+        if not children:
+            continue
+        
+        
+        mother_death = None
+        father_death = None
+        father_death_plus_9_months = None
+        
+        if wife_id and wife_id in ind_dict:
+            mother = ind_dict[wife_id]
+            if mother.get('Death') != 'NA':
+                mother_death = datetime.strptime(mother['Death'], '%d %b %Y')
+        
+        if husband_id and husband_id in ind_dict:
+            father = ind_dict[husband_id]
+            if father.get('Death') != 'NA':
+                father_death = datetime.strptime(father['Death'], '%d %b %Y')
+                father_death_plus_9_months = father_death + timedelta(days=270)  # approximately 9 months
+        
+        
+        for child_id in children:
+            if child_id not in ind_dict:
+                continue
+                
+            child = ind_dict[child_id]
+            birth_date = child.get('Birthday')
+            
+            if birth_date == 'NA':
+                continue
+                
+            birth_dt = datetime.strptime(birth_date, '%d %b %Y')
+            
+            
+            if mother_death and birth_dt > mother_death:
+                errors.append(f"ERROR: US09: Child {child['Name']} ({child_id}) born {birth_date} after mother's death {mother['Death']} in family {family['ID']}")
+            
+            
+            if father_death_plus_9_months and birth_dt > father_death_plus_9_months:
+                errors.append(f"ERROR: US09: Child {child['Name']} ({child_id}) born {birth_date} more than 9 months after father's death {father['Death']} in family {family['ID']}")
+    
+    # Print errors
+    for error in errors:
+        print(error)
+    
+    return errors
+
 
 def display_menu():
     """Display the main menu options"""
