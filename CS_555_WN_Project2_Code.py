@@ -133,6 +133,38 @@ def organizeFamilyData(family_list, individual_list):
     return family_list
 
 
+def calculateAge(birthday_str, death_str):
+    try:
+        birthday = datetime.strptime(birthday_str,"%d %b %Y")
+        if death_str == 'NA':
+           death = datetime.today() 
+        else:
+            death = datetime.strptime(death_str,"%d %b %Y")  
+    except (ValueError, TypeError):
+        return 0
+    
+    return death.year - birthday.year - ((death.month,death.day) < (birthday.month, birthday.day))
+    
+    
+
+
+def findFamilyData(individual_id, family_list_data):
+    spouse = 'NA'
+    children = []
+    
+    for fam in family_list_data:
+        if fam.get('Husband ID') == individual_id or fam.get('Wife ID') == individual_id:
+            children = 'NA' if 'Children' not in fam else fam.get('Children', [])
+
+            if fam.get('Husband ID') == individual_id:
+                spouse = fam.get('Wife ID', 'NA')
+            elif fam.get('Wife ID') == individual_id:
+                spouse = fam.get('Husband ID', 'NA')
+
+            break
+
+    return spouse, children
+
 def organizeIndividualData(family_list, individual_list):
     #sort individuals by ID 
 
@@ -144,45 +176,16 @@ def organizeIndividualData(family_list, individual_list):
         name = ind.get('NAME', 'NA')
         gender = ind.get('SEX', 'NA')
         bday = ind.get('BIRT', 'NA')
-
-        #get the age
         bday_copy = bday
         if is_bday_in_past(bday_copy):
-            # Convert birth string to datetime
-            bday_copy = datetime.strptime(bday_copy, "%d %b %Y")
-
+            
             death = ind.get('DEAT', 'NA')
-
-            if 'DEAT' in ind:
-
-
-                death_copy = death
-                death_copy = datetime.strptime(death_copy, "%d %b %Y")
-
-                age = death_copy.year - bday_copy.year - ((death_copy.month, death_copy.day) < (bday_copy.month, bday_copy.day))
-            else:
-                today = datetime.today()
-                age = today.year - bday_copy.year - ((today.month, today.day) < (bday_copy.month, bday_copy.day))
-
+            death_copy = death
+            age = calculateAge(bday_copy, death_copy)
             alive = 'False' if 'DEAT' in ind else 'True'
-
-
-            spouse = 'NA' if 'FAMS' not in ind else ind.get('FAMS', [])
-
-
-            children = []
-
-            for fam in family_list:
-                if fam.get('Husband ID') == ind_id or fam.get('Wife ID') == ind_id:
-                    children = 'NA' if 'Children' not in fam else fam.get('Children', [])
-
-                    if fam.get('Husband ID') == ind_id:
-                        spouse = fam.get('Wife ID', 'NA')
-                    elif fam.get('Wife ID') == ind_id:
-                        spouse = fam.get('Husband ID', 'NA')
-
-                    break
-                
+        
+            spouse, children = findFamilyData(ind_id, family_list)
+          
             ind.clear()
             ind['ID'] = ind_id
             ind['Name'] = name
@@ -449,6 +452,123 @@ def validate_birth_before_marriage(individual_list, family_list):
                     )
     return True
 
+def validate_birth_before_marriage_of_parents(families_data, individuals_data):
+    """
+    US08: Birth before marriage of parents
+    Child should be born after marriage of parents and not more than 9 months after their divorce
+    Returns list of errors found
+    """
+    errors = []
+    
+    
+    ind_dict = {ind['ID']: ind for ind in individuals_data}
+    
+    for family in families_data:
+        marriage_date = family.get('Married')
+        divorce_date = family.get('Divorced')
+        children = family.get('Children', [])
+        
+        
+        if marriage_date == 'NA' or not children:
+            continue
+            
+        marriage_dt = datetime.strptime(marriage_date, '%d %b %Y')
+        
+        
+        divorce_plus_9_months = None
+        if divorce_date != 'NA':
+            divorce_dt = datetime.strptime(divorce_date, '%d %b %Y')
+            divorce_plus_9_months = divorce_dt + timedelta(days=270)  # approximately 9 months
+        
+        for child_id in children:
+            if child_id not in ind_dict:
+                continue
+                
+            child = ind_dict[child_id]
+            birth_date = child.get('Birthday')
+            
+            if birth_date == 'NA':
+                continue
+                
+            birth_dt = datetime.strptime(birth_date, '%d %b %Y')
+            
+            
+            if birth_dt < marriage_dt:
+                errors.append(f"ERROR: US08: Child {child['Name']} ({child_id}) born {birth_date} before parents' marriage {marriage_date} in family {family['ID']}")
+            
+            
+            if divorce_plus_9_months and birth_dt > divorce_plus_9_months:
+                errors.append(f"ERROR: US08: Child {child['Name']} ({child_id}) born {birth_date} more than 9 months after parents' divorce {divorce_date} in family {family['ID']}")
+    
+    
+    for error in errors:
+        print(error)
+    
+    return errors
+
+
+def validate_birth_before_death_of_parents(families_data, individuals_data):
+    """
+    US09: Birth before death of parents
+    Child should be born before death of mother and before 9 months after death of father
+    Returns list of errors found
+    """
+    errors = []
+    
+    
+    ind_dict = {ind['ID']: ind for ind in individuals_data}
+    
+    for family in families_data:
+        husband_id = family.get('Husband ID')
+        wife_id = family.get('Wife ID')
+        children = family.get('Children', [])
+        
+        if not children:
+            continue
+        
+        
+        mother_death = None
+        father_death = None
+        father_death_plus_9_months = None
+        
+        if wife_id and wife_id in ind_dict:
+            mother = ind_dict[wife_id]
+            if mother.get('Death') != 'NA':
+                mother_death = datetime.strptime(mother['Death'], '%d %b %Y')
+        
+        if husband_id and husband_id in ind_dict:
+            father = ind_dict[husband_id]
+            if father.get('Death') != 'NA':
+                father_death = datetime.strptime(father['Death'], '%d %b %Y')
+                father_death_plus_9_months = father_death + timedelta(days=270)  # approximately 9 months
+        
+        
+        for child_id in children:
+            if child_id not in ind_dict:
+                continue
+                
+            child = ind_dict[child_id]
+            birth_date = child.get('Birthday')
+            
+            if birth_date == 'NA':
+                continue
+                
+            birth_dt = datetime.strptime(birth_date, '%d %b %Y')
+            
+            
+            if mother_death and birth_dt > mother_death:
+                errors.append(f"ERROR: US09: Child {child['Name']} ({child_id}) born {birth_date} after mother's death {mother['Death']} in family {family['ID']}")
+            
+            
+            if father_death_plus_9_months and birth_dt > father_death_plus_9_months:
+                errors.append(f"ERROR: US09: Child {child['Name']} ({child_id}) born {birth_date} more than 9 months after father's death {father['Death']} in family {family['ID']}")
+    
+    # Print errors
+    for error in errors:
+        print(error)
+    
+    return errors
+
 
 def display_menu():
     """Display the main menu options"""
@@ -462,7 +582,9 @@ def display_menu():
     print("5. Validate Divorce Before Death (US06)")
     print("6. Validate Marriage After 14 (US10)")
     print("7. Validate No Bigamy (US11)")
-    print("8. Exit")
+    print("8. List All Single Individuals Over 30 Years Old")
+    print("9. List Individuals with the Same Birthday")
+    print("10. Exit")
     print("="*60)
 
 
@@ -839,7 +961,7 @@ def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-8): ").strip()
+        choice = input("\nEnter your choice (1-10): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -856,14 +978,60 @@ def run_menu(individuals, families):
         elif choice == '7':
             display_bigamy_validation_errors(families, individuals)
         elif choice == '8':
+            single_individuals = listAllSingleIndividuals(individuals)
+            if not single_individuals:
+                print("No single individuals found.")
+            else:
+                print("\nList of Single Individuals (Age > 30):")
+                for ind in single_individuals:
+                    print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Age: {ind.get('Age')})")
+        elif choice == '9':
+            print("\nList of Individuals That Have The Same Birthday:" )
+            bday_list = listMultipleBdays(individuals)
+            for ind in bday_list:
+                print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
+        elif choice == '10':
             print("\nExiting program. Goodbye!")
             break
         else:
-            print("\nInvalid choice! Please enter a number between 1 and 8.")
-        
+            print("\nInvalid choice! Please enter a number between 1 and 10.")
+
         input("\nPress Enter to continue...")
+  
+def listAllSingleIndividuals(individual_list):
+    single_individuals = []
+    for ind in individual_list:
+        if ind.get('Spouse') == 'NA' and ind.get('Alive') == 'True' and ind.get('Age', 0) > 30:
+            single_individuals.append(ind)
+    return single_individuals
+
+def listMultipleBdays(individual_list):
+    bday_map = {}
+    shared_bdays = []
     
+    for ind in individual_list:
+        bday = ind.get('Birthday', 'NA')
+        parts = bday.split()
+        if len(parts) >= 2:
+            bday_key = f"{parts[0]} {parts[1]}" 
+        else:
+            bday_key = bday  
+        if bday_key in bday_map:
+            shared_bdays.append(ind)
+            
+            first_person = bday_map[bday_key]
+            if first_person not in shared_bdays:
+                shared_bdays.append(first_person)
+        else:
+            bday_map[bday_key] = ind
+    if not shared_bdays:
+        print("No individuals share the same birthday.")
     
+    return shared_bdays
+            
+        
+
+
 if __name__ == "__main__":
     #readGedFile
     individuals, families = readGedcomFile("Gedcom-file.ged")

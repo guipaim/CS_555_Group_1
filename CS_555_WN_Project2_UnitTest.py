@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_bigamy, validate_US10_marriage_after_14
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -23,6 +23,10 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
         for ind in self.individuals_data:
             self.assertIsInstance(ind['Age'], int)
             self.assertGreaterEqual(ind['Age'], 0)
+            
+    def test_death_is_valid(self):
+        for ind in self.individuals_data:
+            self.assertIsInstance(ind['Death'], str)
     
     def test_all_individuals_dead_or_alive(self):
         for ind in self.individuals_data:
@@ -59,7 +63,22 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
             self.assertTrue(result)
         except ValueError as e:
             self.fail(f"Birth before marriage validation failed: {e}")        
-     
+
+    def test_birth_before_marriage_of_parents(self):
+        """Test US08: Child born after marriage of parents and within 9 months of divorce"""
+        from CS_555_WN_Project2_Code import validate_birth_before_marriage_of_parents
+    
+        errors = validate_birth_before_marriage_of_parents(self.families_data, self.individuals_data)
+        self.assertEqual(len(errors), 0,
+                    f"US08 violation: Found {len(errors)} child(ren) born before parents' marriage or too long after divorce")
+
+    def test_birth_before_death_of_parents(self):
+        """Test US09: Child born before death of mother and within 9 months of father's death"""
+        from CS_555_WN_Project2_Code import validate_birth_before_death_of_parents
+    
+        errors = validate_birth_before_death_of_parents(self.families_data, self.individuals_data)
+        self.assertEqual(len(errors), 0,
+                    f"US09 violation: Found {len(errors)} child(ren) born after parent's death") 
 
     def test_is_data(self):
         self.assertIsInstance(self.individuals_data, list)
