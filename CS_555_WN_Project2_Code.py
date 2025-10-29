@@ -580,7 +580,9 @@ def display_menu():
     print("3. List Living Married Individuals")
     print("4. Validate Marriage Before Death (US05)")
     print("5. Validate Divorce Before Death (US06)")
-    print("6. Exit")
+    print("6. List All Single Individuals Over 30 Years Old")
+    print("7. List Individuals with the Same Birthday")
+    print("10. Exit")
     print("="*60)
 
 
@@ -721,7 +723,7 @@ def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-6): ").strip()
+        choice = input("\nEnter your choice (1-7): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -734,14 +736,60 @@ def run_menu(individuals, families):
         elif choice == '5':
             display_divorce_validation_errors(families, individuals)
         elif choice == '6':
+            single_individuals = listAllSingleIndividuals(individuals)
+            if not single_individuals:
+                print("No single individuals found.")
+            else:
+                print("\nList of Single Individuals (Age > 30):")
+                for ind in single_individuals:
+                    print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Age: {ind.get('Age')})")
+        elif choice == '7':
+            print("\nList of Individuals That Have The Same Birthday:" )
+            bday_list = listMultipleBdays(individuals)
+            for ind in bday_list:
+                print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
+        elif choice == '10':
             print("\nExiting program. Goodbye!")
             break
         else:
-            print("\nInvalid choice! Please enter a number between 1 and 6.")
-        
+            print("\nInvalid choice! Please enter a number between 1 and 7.")
+
         input("\nPress Enter to continue...")
+  
+def listAllSingleIndividuals(individual_list):
+    single_individuals = []
+    for ind in individual_list:
+        if ind.get('Spouse') == 'NA' and ind.get('Alive') == 'True' and ind.get('Age', 0) > 30:
+            single_individuals.append(ind)
+    return single_individuals
+
+def listMultipleBdays(individual_list):
+    bday_map = {}
+    shared_bdays = []
     
+    for ind in individual_list:
+        bday = ind.get('Birthday', 'NA')
+        parts = bday.split()
+        if len(parts) >= 2:
+            bday_key = f"{parts[0]} {parts[1]}" 
+        else:
+            bday_key = bday  
+        if bday_key in bday_map:
+            shared_bdays.append(ind)
+            
+            first_person = bday_map[bday_key]
+            if first_person not in shared_bdays:
+                shared_bdays.append(first_person)
+        else:
+            bday_map[bday_key] = ind
+    if not shared_bdays:
+        print("No individuals share the same birthday.")
     
+    return shared_bdays
+            
+        
+
+
 if __name__ == "__main__":
     #readGedFile
     individuals, families = readGedcomFile("Gedcom-file.ged")
