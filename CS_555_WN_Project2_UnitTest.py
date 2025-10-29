@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14, validate_parent_age_limits
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -296,6 +296,44 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
         self.assertEqual(errors[0]['Person ID'], 'I001')
         self.assertEqual(errors[0]['Person Name'], 'John Bigamist')
         self.assertIn('bigamy', errors[0]['Error'].lower())
+
+    def test_parents_age_gap_validate(self):
+        """Test US12: Mother should be less than 60 years older and father less than 80 years older than children"""
+        errors = validate_parent_age_limits(self.families_data, self.individuals_data)
+        
+        # Verify it returns a list
+        self.assertIsInstance(errors, list)
+        
+        # If there are errors, verify they are properly formatted
+        for error in errors:
+            self.assertIn('Family ID', error)
+            self.assertIn('Error', error)
+            
+            # Verify error contains appropriate fields based on whether it's mother or father error
+            if 'Mother' in error['Error']:
+                self.assertIn('Mother ID', error)
+                self.assertIn('Mother Name', error)
+                self.assertIn('Mother Birthday', error)
+                self.assertIn('Child ID', error)
+                self.assertIn('Child Name', error)
+                self.assertIn('Child Birthday', error)
+                self.assertIn('Age Difference', error)
+                # Verify age difference is at least 60 for mother
+                self.assertGreaterEqual(error['Age Difference'], 60)
+            elif 'Father' in error['Error']:
+                self.assertIn('Father ID', error)
+                self.assertIn('Father Name', error)
+                self.assertIn('Father Birthday', error)
+                self.assertIn('Child ID', error)
+                self.assertIn('Child Name', error)
+                self.assertIn('Child Birthday', error)
+                self.assertIn('Age Difference', error)
+                # Verify age difference is at least 80 for father
+                self.assertGreaterEqual(error['Age Difference'], 80)
+        
+        # For this test data, we expect no violations (based on earlier run results)
+        self.assertEqual(len(errors), 0,
+                        f"US12 violation: Found {len(errors)} case(s) of parents too old")
 
         
 if __name__ == "__main__":
