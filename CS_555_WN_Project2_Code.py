@@ -312,6 +312,32 @@ def list_recent_deaths(individual_list, days=3650):
     
     return recent_deaths_list
 
+def list_upcoming_birthdays(individual_list, days=30):
+    """US38: List all living people whose birthdays occur in the next `days` days"""
+    today = datetime.today()
+    upcoming_list = []
+    
+    for ind in individual_list:
+        if ind.get('Alive') != 'True':
+            continue
+        bday_str = ind.get('Birthday', 'NA')
+        if bday_str == 'NA':
+            continue
+        try:
+            birth_date = datetime.strptime(bday_str, "%d %b %Y")
+            # Construct the birthday date for this year
+            next_birthday = birth_date.replace(year=today.year)
+            # If this year's birthday already passed, use next year
+            if next_birthday < today.replace(hour=0, minute=0, second=0, microsecond=0):
+                next_birthday = next_birthday.replace(year=today.year + 1)
+            delta_days = (next_birthday - today).days
+            if 0 <= delta_days <= days:
+                upcoming_list.append(ind)
+        except ValueError:
+            continue
+    
+    return upcoming_list
+
 def validate_marriage_before_death(family_list, individual_list):
     """US05: Marriage should occur before death of either spouse"""
     errors = []
