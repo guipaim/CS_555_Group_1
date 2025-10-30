@@ -655,8 +655,9 @@ def display_menu():
     print("7. Validate No Bigamy (US11)")
     print("8. Validate Parent Age Limits (US12)")
     print("9. List All Single Individuals Over 30 Years Old")
-    print("10. List Individuals with the Same Birthday")
-    print("11. Exit")
+    print("10. List Upcoming Birthdays (US38)")
+    print("11. List Individuals with the Same Birthday")
+    print("12. Exit")
     print("="*60)
 
 
@@ -738,6 +739,42 @@ def display_living_married_table(individual_list):
         ])
     
     print(f"\nLiving Married Individuals ({len(living_married)} found):")
+    print(table)
+
+
+def display_upcoming_birthdays(individual_list, days=30):
+    """Display living individuals with birthdays in the next `days` days (US38)"""
+    upcoming = list_upcoming_birthdays(individual_list, days=days)
+    
+    if not upcoming:
+        print(f"\nNo living individuals have birthdays in the next {days} days.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["ID", "Name", "Birthday", "Days Until Birthday"]
+    
+    from datetime import datetime
+    today = datetime.today()
+    
+    for ind in upcoming:
+        bday_str = ind.get('Birthday', 'NA')
+        try:
+            birth_date = datetime.strptime(bday_str, "%d %b %Y")
+            next_bday = birth_date.replace(year=today.year)
+            if next_bday < today.replace(hour=0, minute=0, second=0, microsecond=0):
+                next_bday = next_bday.replace(year=today.year + 1)
+            delta_days = (next_bday - today).days
+        except ValueError:
+            delta_days = 'NA'
+        
+        table.add_row([
+            ind.get('ID', ''),
+            ind.get('Name', ''),
+            bday_str,
+            delta_days
+        ])
+    
+    print(f"\nUpcoming Birthdays in Next {days} Days ({len(upcoming)} found):")
     print(table)
 
 
@@ -1163,7 +1200,7 @@ def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-11): ").strip()
+        choice = input("\nEnter your choice (1-12): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -1190,15 +1227,17 @@ def run_menu(individuals, families):
                 for ind in single_individuals:
                     print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Age: {ind.get('Age')})")
         elif choice == '10':
+            display_upcoming_birthdays(individuals)
+        elif choice == '11':
             print("\nList of Individuals That Have The Same Birthday:" )
             bday_list = listMultipleBdays(individuals)
             for ind in bday_list:
                 print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
-        elif choice == '11':
+        elif choice == '12':
             print("\nExiting program. Goodbye!")
             break
         else:
-            print("\nInvalid choice! Please enter a number between 1 and 11.")
+            print("\nInvalid choice! Please enter a number between 1 and 12.")
 
         input("\nPress Enter to continue...")
   
