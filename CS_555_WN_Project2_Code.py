@@ -303,7 +303,6 @@ def list_recent_deaths(individual_list, days=TEN_YEARS_DAYS):
     """US36: List all deaths that occurred within the last 10 years"""
     recent_deaths_list = []
     today = datetime.today()
-    thirty_days_ago = today - timedelta(days=30)
 
     for ind in individual_list:
         death_date_str = ind.get('Death', 'NA')
