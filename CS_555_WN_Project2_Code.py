@@ -608,7 +608,57 @@ def validate_birth_before_death_of_parents(families_data, individuals_data):
             if father_death_plus_9_months and birth_dt > father_death_plus_9_months:
                 errors.append(f"ERROR: US09: Child {child['Name']} ({child_id}) born {birth_date} more than 9 months after father's death {father['Death']} in family {family['ID']}")
     
-    # Print errors
+    for error in errors:
+        print(error)
+    
+    return errors
+
+def validate_fewer_than_15_siblings(families_data, individuals_data):
+    """
+    US15: Fewer than 15 siblings
+    There should be fewer than 15 siblings in a family
+    Returns list of errors found
+    """
+    errors = []
+    
+    for family in families_data:
+        children = family.get('Children', [])
+        
+        if len(children) >= 15:
+            errors.append(f"ERROR: US15: Family {family['ID']} has {len(children)} children (should be fewer than 15)")
+    
+    for error in errors:
+        print(error)
+    
+    return errors
+
+
+def validate_correct_gender_for_role(families_data, individuals_data):
+    """
+    US21: Correct gender for role
+    Husband in family should be male and wife in family should be female
+    Returns list of errors found
+    """
+    errors = []
+    
+    ind_dict = {ind['ID']: ind for ind in individuals_data}
+    
+    for family in families_data:
+        husband_id = family.get('Husband ID')
+        wife_id = family.get('Wife ID')
+        
+        if husband_id and husband_id != 'NA' and husband_id in ind_dict:
+            husband = ind_dict[husband_id]
+            gender = husband.get('Gender', 'NA')
+            if gender != 'M':
+                errors.append(f"ERROR: US21: Husband {husband.get('Name')} ({husband_id}) in family {family['ID']} is not male (Gender: {gender})")
+
+        if wife_id and wife_id != 'NA' and wife_id in ind_dict:
+            wife = ind_dict[wife_id]
+            gender = wife.get('Gender', 'NA')
+            if gender != 'F':
+                errors.append(f"ERROR: US21: Wife {wife.get('Name')} ({wife_id}) in family {family['ID']} is not female (Gender: {gender})")
+    
     for error in errors:
         print(error)
     
@@ -630,7 +680,9 @@ def display_menu():
     print("8. Validate Parent Age Limits (US12)")
     print("9. List All Single Individuals Over 30 Years Old")
     print("10. List Individuals with the Same Birthday")
-    print("11. Exit")
+    print("11. Validate Fewer Than 15 Siblings (US15)")
+    print("12. Validate Correct Gender for Role (US21)")
+    print("13. Exit")
     print("="*60)
 
 
@@ -1169,6 +1221,14 @@ def run_menu(individuals, families):
             for ind in bday_list:
                 print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
         elif choice == '11':
+            errors = validate_fewer_than_15_siblings(families, individuals)
+            if not errors:
+                print("\nUS15 Validation: No errors found! All families have fewer than 15 siblings.")
+        elif choice == '12':
+            errors = validate_correct_gender_for_role(families, individuals)
+            if not errors:
+                print("\nUS21 Validation: No errors found! All gender roles are correct.")
+        elif choice == '13':  # Change from 11 to 13
             print("\nExiting program. Goodbye!")
             break
         else:
