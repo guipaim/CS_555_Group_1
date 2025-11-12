@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14, validate_parent_age_limits, validate_US18_siblings_should_not_marry, validate_US19_first_cousins_should_not_marry
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14, validate_parent_age_limits
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -388,6 +388,33 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
         # For this test data, we expect no violations
         self.assertEqual(len(errors), 0,
                         f"US19 violation: Found {len(errors)} first cousin marriage(s)")
+
+    def test_fewer_than_15_siblings(self):
+        """Test US15: Fewer than 15 siblings - There should be fewer than 15 siblings in a family"""
+        from CS_555_WN_Project2_Code import validate_fewer_than_15_siblings
+    
+        errors = validate_fewer_than_15_siblings(self.families_data, self.individuals_data)
+    
+        self.assertIsInstance(errors, list)
+    
+        self.assertEqual(len(errors), 0,
+                    f"US15 violation: Found {len(errors)} familie(s) with 15 or more siblings")
+
+    def test_correct_gender_for_role(self):
+        """Test US21: Correct gender for role - Husband should be male and wife should be female"""
+        from CS_555_WN_Project2_Code import validate_correct_gender_for_role
+    
+        errors = validate_correct_gender_for_role(self.families_data, self.individuals_data)
+    
+        self.assertIsInstance(errors, list)
+    
+        for error in errors:
+            self.assertIsInstance(error, str)
+            self.assertIn('ERROR: US21:', error)
+            self.assertIn('family', error.lower())
+    
+        self.assertEqual(len(errors), 0,
+                    f"US21 violation: Found {len(errors)} incorrect gender role(s)")
     
     def test_siblings_should_not_marry_with_mock_data(self):
         """Test US18 with mock data that should trigger violations"""
@@ -497,6 +524,6 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
         self.assertEqual(errors[0]['Husband ID'], 'I007')
         self.assertEqual(errors[0]['Wife ID'], 'I008')
         self.assertIn('US19', errors[0]['Error'])
-        
+
 if __name__ == "__main__":
     unittest.main()
