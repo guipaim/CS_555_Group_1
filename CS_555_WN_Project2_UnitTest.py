@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14, validate_parent_age_limits
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14, validate_parent_age_limits, list_upcoming_birthdays
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -489,6 +489,29 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
         error_text = ' '.join(errors)
         self.assertIn('I001', error_text)  
         self.assertIn('I004', error_text)     
+    def test_list_upcoming_birthdays(self):
+        """Test US38: List living people with birthdays in the next 30 days"""
+        upcoming = list_upcoming_birthdays(self.individuals_data, days=30)
+        
+        # verify it returns a list
+        self.assertIsInstance(upcoming, list)
+        
+        # verify returned individuals are alive and birthday within next 30 days
+        from datetime import datetime
+        today = datetime.today()
+        for ind in upcoming:
+            self.assertEqual(ind.get('Alive'), 'True',
+                f"{ind.get('Name')} is listed for upcoming birthdays but is not alive")
+            bday_str = ind.get('Birthday', 'NA')
+            self.assertNotEqual(bday_str, 'NA',
+                f"{ind.get('Name')} is listed for upcoming birthdays but has no birthday")
+            birth_date = datetime.strptime(bday_str, "%d %b %Y")
+            next_bday = birth_date.replace(year=today.year)
+            if next_bday < today.replace(hour=0, minute=0, second=0, microsecond=0):
+                next_bday = next_bday.replace(year=today.year + 1)
+            delta_days = (next_bday - today).days
+            self.assertGreaterEqual(delta_days, 0)
+            self.assertLessEqual(delta_days, 30)
 
         
 if __name__ == "__main__":
