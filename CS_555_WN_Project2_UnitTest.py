@@ -335,6 +335,160 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
         self.assertEqual(len(errors), 0,
                         f"US12 violation: Found {len(errors)} case(s) of parents too old")
 
+    def test_fewer_than_15_siblings(self):
+        """Test US15: Fewer than 15 siblings - There should be fewer than 15 siblings in a family"""
+        from CS_555_WN_Project2_Code import validate_fewer_than_15_siblings
+    
+        errors = validate_fewer_than_15_siblings(self.families_data, self.individuals_data)
+    
+    
+        self.assertIsInstance(errors, list)
+    
+    
+        self.assertEqual(len(errors), 0,
+                    f"US15 violation: Found {len(errors)} familie(s) with 15 or more siblings")
+
+    def test_correct_gender_for_role(self):
+        """Test US21: Correct gender for role - Husband should be male and wife should be female"""
+        from CS_555_WN_Project2_Code import validate_correct_gender_for_role
+    
+        errors = validate_correct_gender_for_role(self.families_data, self.individuals_data)
+    
+    
+        self.assertIsInstance(errors, list)
+    
+    
+        for error in errors:
+       
+            self.assertIsInstance(error, str)
+            self.assertIn('ERROR: US21:', error)
+            self.assertIn('family', error.lower())
+    
+    
+        self.assertEqual(len(errors), 0,
+                    f"US21 violation: Found {len(errors)} incorrect gender role(s)")
+
+    def test_fewer_than_15_siblings_with_mock_data(self):
+        """Test US15 with mock data that should trigger violations"""
+        from CS_555_WN_Project2_Code import validate_fewer_than_15_siblings
+    
+    
+        mock_families = [
+            {
+                'ID': 'F001',
+                'Married': '15 JUN 2000',
+                'Divorced': 'NA',
+                'Husband ID': 'I001',
+                'Husband Name': 'John Prolific',
+                'Wife ID': 'I002',
+                'Wife Name': 'Jane Prolific',
+                'Children': [f'I{str(i).zfill(3)}' for i in range(100, 115)]  
+            },
+            {
+                'ID': 'F002',
+                'Married': '10 JAN 1995',
+                'Divorced': 'NA',
+                'Husband ID': 'I050',
+                'Husband Name': 'Bob Normal',
+                'Wife ID': 'I051',
+                'Wife Name': 'Alice Normal',
+                'Children': ['I052', 'I053']  
+            }
+        ]
+    
+        mock_individuals = []  
+    
+        errors = validate_fewer_than_15_siblings(mock_families, mock_individuals)
+    
+   
+        self.assertEqual(len(errors), 1)
+        self.assertIn('F001', errors[0])
+        self.assertIn('15', errors[0])
+
+    def test_correct_gender_for_role_with_mock_data(self):
+        """Test US21 with mock data that should trigger gender role violations"""
+        from CS_555_WN_Project2_Code import validate_correct_gender_for_role
+    
+    #
+        mock_families = [
+            {
+                'ID': 'F001',
+                'Married': '15 JUN 2000',
+                'Divorced': 'NA',# 
+                'Husband ID': 'I001',  
+                'Husband Name': 'John Wrong',
+                'Wife ID': 'I002',
+                'Wife Name': 'Jane Right',
+                'Children': []
+            },
+            {
+                'ID': 'F002',
+                'Married': '10 JAN 1995',
+                'Divorced': 'NA',
+                'Husband ID': 'I003',
+                'Husband Name': 'Bob Right',
+                'Wife ID': 'I004',  
+                'Wife Name': 'Alice Wrong',
+                'Children': []
+            }
+        ]
+    
+        mock_individuals = [
+            {
+                'ID': 'I001',
+                'Name': 'John Wrong',
+                'Gender': 'F',  
+                'Birthday': '1 JAN 1970',
+                'Age': 54,
+                'Alive': 'True',
+                'Death': 'NA',
+                'Children': [],
+                'Spouse': 'I002'
+            },
+            {
+                'ID': 'I002',
+                'Name': 'Jane Right',
+                'Gender': 'F',  
+                'Birthday': '15 MAR 1975',
+                'Age': 49,
+                'Alive': 'True',
+                'Death': 'NA',
+                'Children': [],
+                'Spouse': 'I001'
+            },
+            {
+                'ID': 'I003',
+                'Name': 'Bob Right',
+                'Gender': 'M', 
+                'Birthday': '10 JUL 1965',
+                'Age': 59,
+                'Alive': 'True',
+                'Death': 'NA',
+                'Children': [],
+                'Spouse': 'I004'
+            },
+            {
+                'ID': 'I004',
+                'Name': 'Alice Wrong',
+                'Gender': 'M',  
+                'Birthday': '5 SEP 1968',
+                'Age': 56,
+                'Alive': 'True',
+                'Death': 'NA',
+                'Children': [],
+                'Spouse': 'I003'
+            }
+        ]
+    
+        errors = validate_correct_gender_for_role(mock_families, mock_individuals)
+    
+    
+        self.assertEqual(len(errors), 2)
+    
+    
+        error_text = ' '.join(errors)
+        self.assertIn('I001', error_text)  
+        self.assertIn('I004', error_text)     
     def test_list_upcoming_birthdays(self):
         """Test US38: List living people with birthdays in the next 30 days"""
         upcoming = list_upcoming_birthdays(self.individuals_data, days=30)
