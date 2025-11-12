@@ -1,6 +1,13 @@
 from datetime import datetime, timedelta
 from prettytable import PrettyTable
 
+# Define constants
+MAX_MOTHER_AGE_DIFF = 60
+MAX_FATHER_AGE_DIFF = 80
+MIN_MARRIAGE_AGE = 14
+MAX_AGE_YEARS = 150
+NINE_MONTHS_DAYS = 270
+TEN_YEARS_DAYS = 3650
 
 def parse_line(line):  
     
@@ -353,11 +360,10 @@ def list_living_married(individual_list):
             
     return living_married_list
 
-def list_recent_deaths(individual_list, days=3650):
+def list_recent_deaths(individual_list, days=TEN_YEARS_DAYS):
     """US36: List all deaths that occurred within the last 10 years"""
     recent_deaths_list = []
     today = datetime.today()
-    thirty_days_ago = today - timedelta(days=30)
 
     for ind in individual_list:
         death_date_str = ind.get('Death', 'NA')
@@ -372,6 +378,32 @@ def list_recent_deaths(individual_list, days=3650):
                 pass
     
     return recent_deaths_list
+
+def list_upcoming_birthdays(individual_list, days=30):
+    """US38: List all living people whose birthdays occur in the next `days` days"""
+    today = datetime.today()
+    upcoming_list = []
+    
+    for ind in individual_list:
+        if ind.get('Alive') != 'True':
+            continue
+        bday_str = ind.get('Birthday', 'NA')
+        if bday_str == 'NA':
+            continue
+        try:
+            birth_date = datetime.strptime(bday_str, "%d %b %Y")
+            # Construct the birthday date for this year
+            next_birthday = birth_date.replace(year=today.year)
+            # If this year's birthday already passed, use next year
+            if next_birthday < today.replace(hour=0, minute=0, second=0, microsecond=0):
+                next_birthday = next_birthday.replace(year=today.year + 1)
+            delta_days = (next_birthday - today).days
+            if 0 <= delta_days <= days:
+                upcoming_list.append(ind)
+        except ValueError:
+            continue
+    
+    return upcoming_list
 
 def validate_marriage_before_death(family_list, individual_list):
     """US05: Marriage should occur before death of either spouse"""
@@ -501,7 +533,7 @@ def validate__death(individual_list):
                 birth_date = datetime.strptime(birthday, "%d %b %Y")
                 delta = death_date - birth_date
                 years = delta.days / 365.25
-                if years >= 150:
+                if years >= MAX_AGE_YEARS:
                     errors.append({
                         'Name': ind.get('Name'),
                         'Birth Date': birthday,
@@ -513,7 +545,7 @@ def validate__death(individual_list):
                 birth_date = datetime.strptime(birthday, "%d %b %Y")
                 delta = today - birth_date
                 years = delta.days / 365.25
-                if years >= 150:
+                if years >= MAX_AGE_YEARS:
                     errors.append({
                         'Name': ind.get('Name'),
                         'Birth Date': birthday,
@@ -584,7 +616,7 @@ def validate_birth_before_marriage_of_parents(families_data, individuals_data):
         divorce_plus_9_months = None
         if divorce_date != 'NA':
             divorce_dt = datetime.strptime(divorce_date, '%d %b %Y')
-            divorce_plus_9_months = divorce_dt + timedelta(days=270)  # approximately 9 months
+            divorce_plus_9_months = divorce_dt + timedelta(days=NINE_MONTHS_DAYS)  # approximately 9 months
         
         for child_id in children:
             if child_id not in ind_dict:
@@ -646,7 +678,7 @@ def validate_birth_before_death_of_parents(families_data, individuals_data):
             father = ind_dict[husband_id]
             if father.get('Death') != 'NA':
                 father_death = datetime.strptime(father['Death'], '%d %b %Y')
-                father_death_plus_9_months = father_death + timedelta(days=270)  # approximately 9 months
+                father_death_plus_9_months = father_death + timedelta(days=NINE_MONTHS_DAYS)  # approximately 9 months
         
         
         for child_id in children:
@@ -669,7 +701,57 @@ def validate_birth_before_death_of_parents(families_data, individuals_data):
             if father_death_plus_9_months and birth_dt > father_death_plus_9_months:
                 errors.append(f"ERROR: US09: Child {child['Name']} ({child_id}) born {birth_date} more than 9 months after father's death {father['Death']} in family {family['ID']}")
     
-    # Print errors
+    for error in errors:
+        print(error)
+    
+    return errors
+
+def validate_fewer_than_15_siblings(families_data, individuals_data):
+    """
+    US15: Fewer than 15 siblings
+    There should be fewer than 15 siblings in a family
+    Returns list of errors found
+    """
+    errors = []
+    
+    for family in families_data:
+        children = family.get('Children', [])
+        
+        if len(children) >= 15:
+            errors.append(f"ERROR: US15: Family {family['ID']} has {len(children)} children (should be fewer than 15)")
+    
+    for error in errors:
+        print(error)
+    
+    return errors
+
+
+def validate_correct_gender_for_role(families_data, individuals_data):
+    """
+    US21: Correct gender for role
+    Husband in family should be male and wife in family should be female
+    Returns list of errors found
+    """
+    errors = []
+    
+    ind_dict = {ind['ID']: ind for ind in individuals_data}
+    
+    for family in families_data:
+        husband_id = family.get('Husband ID')
+        wife_id = family.get('Wife ID')
+        
+        if husband_id and husband_id != 'NA' and husband_id in ind_dict:
+            husband = ind_dict[husband_id]
+            gender = husband.get('Gender', 'NA')
+            if gender != 'M':
+                errors.append(f"ERROR: US21: Husband {husband.get('Name')} ({husband_id}) in family {family['ID']} is not male (Gender: {gender})")
+
+        if wife_id and wife_id != 'NA' and wife_id in ind_dict:
+            wife = ind_dict[wife_id]
+            gender = wife.get('Gender', 'NA')
+            if gender != 'F':
+                errors.append(f"ERROR: US21: Wife {wife.get('Name')} ({wife_id}) in family {family['ID']} is not female (Gender: {gender})")
+    
     for error in errors:
         print(error)
     
@@ -690,11 +772,14 @@ def display_menu():
     print("7. Validate No Bigamy (US11)")
     print("8. Validate Parent Age Limits (US12)")
     print("9. List All Single Individuals Over 30 Years Old")
-    print("10. List Individuals with the Same Birthday")
-    print("15. List Orphaned Individuals")
-    print("16. List Individuals with Younger Spouses")
-    print("17. List Recent Births (Last 30 Days)")
-    print("18. Exit")
+    print("10. List Upcoming Birthdays ")
+    print("11. List Individuals with the Same Birthday")
+    print("12. Validate Fewer Than 15 Siblings (US15)")
+    print("13. Validate Correct Gender for Role (US21)")
+    print("14. List Orphaned Individuals")
+    print("15. List Individuals with Younger Spouses")
+    print("16. List Recent Births (Last 30 Days)")
+    print("17. Exit")
     print("="*60)
 
 
@@ -776,6 +861,42 @@ def display_living_married_table(individual_list):
         ])
     
     print(f"\nLiving Married Individuals ({len(living_married)} found):")
+    print(table)
+
+
+def display_upcoming_birthdays(individual_list, days=30):
+    """Display living individuals with birthdays in the next `days` days (US38)"""
+    upcoming = list_upcoming_birthdays(individual_list, days=days)
+    
+    if not upcoming:
+        print(f"\nNo living individuals have birthdays in the next {days} days.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["ID", "Name", "Birthday", "Days Until Birthday"]
+    
+    from datetime import datetime
+    today = datetime.today()
+    
+    for ind in upcoming:
+        bday_str = ind.get('Birthday', 'NA')
+        try:
+            birth_date = datetime.strptime(bday_str, "%d %b %Y")
+            next_bday = birth_date.replace(year=today.year)
+            if next_bday < today.replace(hour=0, minute=0, second=0, microsecond=0):
+                next_bday = next_bday.replace(year=today.year + 1)
+            delta_days = (next_bday - today).days
+        except ValueError:
+            delta_days = 'NA'
+        
+        table.add_row([
+            ind.get('ID', ''),
+            ind.get('Name', ''),
+            bday_str,
+            delta_days
+        ])
+    
+    print(f"\nUpcoming Birthdays in Next {days} Days ({len(upcoming)} found):")
     print(table)
 
 
@@ -931,6 +1052,7 @@ def display_marriage_age_validation_errors(family_list, individual_list):
     
     print(f"\nUS10 Validation Errors ({len(errors)} found):")
     print(table)
+
 def validate_US10_marriage_after_14(family_list, individual_list):
     """
     US10: Marriage after 14
@@ -956,7 +1078,7 @@ def validate_US10_marriage_after_14(family_list, individual_list):
                     if birth != 'NA':
                         birth_date = datetime.strptime(birth, "%d %b %Y")
                         age_at_marriage = (marry_date - birth_date).days / 365.25
-                        if age_at_marriage < 14:
+                        if age_at_marriage < MIN_MARRIAGE_AGE:
                             errors.append({
                                 'Family ID': fam.get('ID'),
                                 'Spouse ID': husb_id,
@@ -976,7 +1098,7 @@ def validate_US10_marriage_after_14(family_list, individual_list):
                     if birth != 'NA':
                         birth_date = datetime.strptime(birth, "%d %b %Y")
                         age_at_marriage = (marry_date - birth_date).days / 365.25
-                        if age_at_marriage < 14:
+                        if age_at_marriage < MIN_MARRIAGE_AGE:
                             errors.append({
                                 'Family ID': fam.get('ID'),
                                 'Spouse ID': wife_id,
@@ -1164,7 +1286,7 @@ def validate_parent_age_limits(families_data, individuals_data):
             if mother_birth:
                 age_diff_mother = (child_birth.year - mother_birth.year - 
                                   ((child_birth.month, child_birth.day) < (mother_birth.month, mother_birth.day)))
-                if age_diff_mother >= 60:
+                if age_diff_mother >= MAX_MOTHER_AGE_DIFF:
                     errors.append({
                         'Family ID': family.get('ID'),
                         'Mother ID': wife_id,
@@ -1181,7 +1303,7 @@ def validate_parent_age_limits(families_data, individuals_data):
             if father_birth:
                 age_diff_father = (child_birth.year - father_birth.year - 
                                   ((child_birth.month, child_birth.day) < (father_birth.month, father_birth.day)))
-                if age_diff_father >= 80:
+                if age_diff_father >= MAX_FATHER_AGE_DIFF:
                     errors.append({
                         'Family ID': family.get('ID'),
                         'Father ID': husband_id,
@@ -1201,7 +1323,7 @@ def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-11): ").strip()
+        choice = input("\nEnter your choice (1-17): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -1228,11 +1350,21 @@ def run_menu(individuals, families):
                 for ind in single_individuals:
                     print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Age: {ind.get('Age')})")
         elif choice == '10':
+            display_upcoming_birthdays(individuals)
+        elif choice == '11':
             print("\nList of Individuals That Have The Same Birthday:" )
             bday_list = listMultipleBdays(individuals)
             for ind in bday_list:
                 print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
-        elif choice == '15':
+        elif choice == '12':
+            errors = validate_fewer_than_15_siblings(families, individuals)
+            if not errors:
+                print("\nUS15 Validation: No errors found! All families have fewer than 15 siblings.")
+        elif choice == '13':
+            errors = validate_correct_gender_for_role(families, individuals)
+            if not errors:
+                print("\nUS21 Validation: No errors found! All gender roles are correct.")
+        elif choice == '14':
             orphaned_individuals = list_orphans(individuals, families)
             if not orphaned_individuals:
                 print("No orphaned individuals found.")
@@ -1240,13 +1372,13 @@ def run_menu(individuals, families):
                 print("\nList of Orphaned Individuals:")
                 for ind in orphaned_individuals:
                     print(f" - {ind.get('Name')} (ID: {ind.get('ID')})")
-        elif choice == '16':
+        elif choice == '15':
             younger_spouses = list_younger_spouse(families, individuals)
             
             for record in younger_spouses:
                 fam_id, younger_id, older_id, description = record
                 print(f"Family {fam_id}: {description} ({younger_id} < {older_id})")
-        elif choice == '17':
+        elif choice == '16':
             recent_births = list_recent_births(individuals)
             if not recent_births:
                 print("No recent births found.")
@@ -1254,7 +1386,7 @@ def run_menu(individuals, families):
                 print("\nList of Recent Births (Last 30 Days):")
                 for ind in recent_births:
                     print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
-        elif choice == '18':
+        elif choice == '17':
             print("\nExiting program. Goodbye!")
             break
         else:
@@ -1268,6 +1400,87 @@ def listAllSingleIndividuals(individual_list):
         if ind.get('Spouse') == 'NA' and ind.get('Alive') == 'True' and ind.get('Age', 0) > 30:
             single_individuals.append(ind)
     return single_individuals
+
+def listRecentDeaths(individual_list):
+    list = []
+
+    for ind in individual_list:
+
+        try:   
+            death = ind.get('Death', 'NA')
+            if death != 'NA':
+                death_date = datetime.strptime(death, "%d %b %Y").date()
+                today = datetime.today().date()
+                delta = today - death_date
+                if delta.days <= 30:
+                    list.append({
+                        'Name': ind.get('Name'),
+                        'Death Date': death,
+                    })
+                           
+        except ValueError:
+            pass
+
+    print("\nRecent Deaths:")    
+    for item in list:
+        print(item)
+
+def listUpcomingBirthdays(individual_list):
+    list = []
+
+    for ind in individual_list:
+
+        try:   
+            birthday = ind.get('Birthday', 'NA')
+            if birthday != 'NA':
+                today = datetime.today().date()
+                birth_date = datetime.strptime(birthday, "%d %b %Y").date()
+                this_birthday = birth_date.replace(year=today.year)
+                delta = today + timedelta(days=30)
+                if today <= this_birthday <= delta:
+                    list.append({
+                        'Name': ind.get('Name'),
+                        'Birth Date': this_birthday.strftime('%Y-%m-%d'),
+                    })
+                           
+        except ValueError:
+            pass
+    
+    print("\nUpcomming Birthdays:")
+    for item in list:
+        print(item)
+    
+def listUpcomingAnniversary(family_list, individual_list):
+    list = []
+
+    for ind in individual_list:
+        spouse = ind.get('Spouse')
+
+        if spouse == 'NA':
+            continue
+
+        for fam in family_list:
+            if fam.get('Husband ID') == ind.get('ID') or fam.get('Wife ID') == ind.get('ID'):
+
+                married = fam.get('Married')
+            
+                if married == 'NA' or married is None:
+                    continue
+                
+                today = datetime.today().date()
+                marriage_date = datetime.strptime(married, "%d %b %Y").date()
+                this_anniversary = marriage_date.replace(year=today.year)
+                delta = today + timedelta(days=30)
+
+                if today <= this_anniversary <= delta:
+                    list.append({
+                        'Name': ind.get('Name'),
+                        'Birth Date': this_anniversary.strftime('%Y-%m-%d'),
+                    })
+                           
+    print("\nUpcomming Anniversaries:")
+    for item in list:
+        print(item)
 
 def listMultipleBdays(individual_list):
     bday_map = {}
@@ -1306,6 +1519,9 @@ if __name__ == "__main__":
     #organize individual
     individuals = organizeIndividualData(families, individuals)
     verifyAge(individuals)
+    listRecentDeaths(individuals)
+    listUpcomingBirthdays(individuals)
+    listUpcomingAnniversary(families, individuals)
     
     # Run the interactive menu
     run_menu(individuals, families)
