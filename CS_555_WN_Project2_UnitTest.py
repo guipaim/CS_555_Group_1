@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14, validate_parent_age_limits
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14, validate_parent_age_limits, validate_US18_siblings_should_not_marry, validate_US19_first_cousins_should_not_marry
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -335,6 +335,168 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
         self.assertEqual(len(errors), 0,
                         f"US12 violation: Found {len(errors)} case(s) of parents too old")
 
+    def test_siblings_should_not_marry(self):
+        """Test US18: Siblings should not marry - with real data"""
+        errors = validate_US18_siblings_should_not_marry(self.families_data, self.individuals_data)
+        
+        # Verify it returns a list
+        self.assertIsInstance(errors, list)
+        
+        # If there are errors, verify they are properly formatted
+        for error in errors:
+            self.assertIn('Family ID', error)
+            self.assertIn('Husband ID', error)
+            self.assertIn('Husband Name', error)
+            self.assertIn('Wife ID', error)
+            self.assertIn('Wife Name', error)
+            self.assertIn('Error', error)
+            
+            # Verify husband and wife IDs are different
+            self.assertNotEqual(error['Husband ID'], error['Wife ID'],
+                f"Same person listed as both husband and wife in family {error['Family ID']}")
+            
+            # Verify error message contains US18
+            self.assertIn('US18', error['Error'])
+        
+        # For this test data, we expect no violations
+        self.assertEqual(len(errors), 0,
+                        f"US18 violation: Found {len(errors)} sibling marriage(s)")
+    
+    def test_first_cousins_should_not_marry(self):
+        """Test US19: First cousins should not marry - with real data"""
+        errors = validate_US19_first_cousins_should_not_marry(self.families_data, self.individuals_data)
+        
+        # Verify it returns a list
+        self.assertIsInstance(errors, list)
+        
+        # If there are errors, verify they are properly formatted
+        for error in errors:
+            self.assertIn('Family ID', error)
+            self.assertIn('Husband ID', error)
+            self.assertIn('Husband Name', error)
+            self.assertIn('Wife ID', error)
+            self.assertIn('Wife Name', error)
+            self.assertIn('Error', error)
+            
+            # Verify husband and wife IDs are different
+            self.assertNotEqual(error['Husband ID'], error['Wife ID'],
+                f"Same person listed as both husband and wife in family {error['Family ID']}")
+            
+            # Verify error message contains US19
+            self.assertIn('US19', error['Error'])
+        
+        # For this test data, we expect no violations
+        self.assertEqual(len(errors), 0,
+                        f"US19 violation: Found {len(errors)} first cousin marriage(s)")
+    
+    def test_siblings_should_not_marry_with_mock_data(self):
+        """Test US18 with mock data that should trigger violations"""
+        mock_families = [
+            {
+                'ID': 'F001',
+                'Husband ID': 'I003',
+                'Wife ID': 'I004',
+                'Married': 'NA',
+                'Divorced': 'NA',
+                'Husband Name': 'Bob Smith',
+                'Wife Name': 'Mary Smith',
+                'Children': ['I001', 'I002']
+            },
+            {
+                'ID': 'F002',
+                'Husband ID': 'I001',
+                'Wife ID': 'I002',
+                'Married': '1 JAN 2010',
+                'Divorced': 'NA',
+                'Husband Name': 'John Sibling',
+                'Wife Name': 'Jane Sibling',
+                'Children': []
+            }
+        ]
+        
+        mock_individuals = [
+            {'ID': 'I001', 'Name': 'John Sibling', 'Birthday': '10 JAN 1990'},
+            {'ID': 'I002', 'Name': 'Jane Sibling', 'Birthday': '15 MAR 1992'},
+            {'ID': 'I003', 'Name': 'Bob Smith', 'Birthday': '20 JUN 1960'},
+            {'ID': 'I004', 'Name': 'Mary Smith', 'Birthday': '25 AUG 1962'}
+        ]
+        
+        errors = validate_US18_siblings_should_not_marry(mock_families, mock_individuals)
+        
+        # Should find exactly 1 error (I001 and I002 are siblings who married)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]['Husband ID'], 'I001')
+        self.assertEqual(errors[0]['Wife ID'], 'I002')
+        self.assertIn('US18', errors[0]['Error'])
+
+    def test_first_cousins_should_not_marry_with_mock_data(self):
+        """Test US19 with mock data that should trigger violations"""
+        # Create mock family tree where cousins marry
+        mock_families = [
+            # Grandparents family
+            {
+                'ID': 'F001',
+                'Husband ID': 'I001',  # Grandfather
+                'Wife ID': 'I002',     # Grandmother
+                'Married': '1 JAN 1950',
+                'Divorced': 'NA',
+                'Husband Name': 'Grandfather Smith',
+                'Wife Name': 'Grandmother Smith',
+                'Children': ['I003', 'I004']  # Two brothers
+            },
+            # First brother's family
+            {
+                'ID': 'F002',
+                'Husband ID': 'I003',  # Brother 1
+                'Wife ID': 'I005',     # Wife 1
+                'Married': '15 JUN 1975',
+                'Divorced': 'NA',
+                'Husband Name': 'Brother One',
+                'Wife Name': 'Wife One',
+                'Children': ['I007']   # Cousin John
+            },
+            # Second brother's family
+            {
+                'ID': 'F003',
+                'Husband ID': 'I004',  # Brother 2
+                'Wife ID': 'I006',     # Wife 2
+                'Married': '20 AUG 1976',
+                'Divorced': 'NA',
+                'Husband Name': 'Brother Two', 
+                'Wife Name': 'Wife Two',
+                'Children': ['I008']   # Cousin Jane
+            },
+            # Cousins marrying each other - THIS SHOULD TRIGGER ERROR
+            {
+                'ID': 'F004',
+                'Husband ID': 'I007',  # Cousin John
+                'Wife ID': 'I008',     # Cousin Jane
+                'Married': '10 MAY 2000',
+                'Divorced': 'NA',
+                'Husband Name': 'John Cousin',
+                'Wife Name': 'Jane Cousin',
+                'Children': []
+            }
+        ]
+        
+        mock_individuals = [
+            {'ID': 'I001', 'Name': 'Grandfather Smith', 'Birthday': '1 JAN 1920'},
+            {'ID': 'I002', 'Name': 'Grandmother Smith', 'Birthday': '15 MAR 1922'},
+            {'ID': 'I003', 'Name': 'Brother One', 'Birthday': '10 APR 1945'},
+            {'ID': 'I004', 'Name': 'Brother Two', 'Birthday': '20 JUN 1947'},
+            {'ID': 'I005', 'Name': 'Wife One', 'Birthday': '5 SEP 1950'},
+            {'ID': 'I006', 'Name': 'Wife Two', 'Birthday': '12 NOV 1952'},
+            {'ID': 'I007', 'Name': 'John Cousin', 'Birthday': '25 JUL 1976'},
+            {'ID': 'I008', 'Name': 'Jane Cousin', 'Birthday': '3 DEC 1978'}
+        ]
+        
+        errors = validate_US19_first_cousins_should_not_marry(mock_families, mock_individuals)
+        
+        # Should find exactly 1 error (I007 and I008 are first cousins who married)
+        self.assertEqual(len(errors), 1)
+        self.assertEqual(errors[0]['Husband ID'], 'I007')
+        self.assertEqual(errors[0]['Wife ID'], 'I008')
+        self.assertIn('US19', errors[0]['Error'])
         
 if __name__ == "__main__":
     unittest.main()
