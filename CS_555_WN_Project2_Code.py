@@ -1,6 +1,13 @@
 from datetime import datetime, timedelta
 from prettytable import PrettyTable
 
+# Define constants
+MAX_MOTHER_AGE_DIFF = 60
+MAX_FATHER_AGE_DIFF = 80
+MIN_MARRIAGE_AGE = 14
+MAX_AGE_YEARS = 150
+NINE_MONTHS_DAYS = 270
+TEN_YEARS_DAYS = 3650
 
 def parse_line(line):  
     
@@ -292,11 +299,10 @@ def list_living_married(individual_list):
             
     return living_married_list
 
-def list_recent_deaths(individual_list, days=3650):
+def list_recent_deaths(individual_list, days=TEN_YEARS_DAYS):
     """US36: List all deaths that occurred within the last 10 years"""
     recent_deaths_list = []
     today = datetime.today()
-    thirty_days_ago = today - timedelta(days=30)
 
     for ind in individual_list:
         death_date_str = ind.get('Death', 'NA')
@@ -466,7 +472,7 @@ def validate__death(individual_list):
                 birth_date = datetime.strptime(birthday, "%d %b %Y")
                 delta = death_date - birth_date
                 years = delta.days / 365.25
-                if years >= 150:
+                if years >= MAX_AGE_YEARS:
                     errors.append({
                         'Name': ind.get('Name'),
                         'Birth Date': birthday,
@@ -478,7 +484,7 @@ def validate__death(individual_list):
                 birth_date = datetime.strptime(birthday, "%d %b %Y")
                 delta = today - birth_date
                 years = delta.days / 365.25
-                if years >= 150:
+                if years >= MAX_AGE_YEARS:
                     errors.append({
                         'Name': ind.get('Name'),
                         'Birth Date': birthday,
@@ -549,7 +555,7 @@ def validate_birth_before_marriage_of_parents(families_data, individuals_data):
         divorce_plus_9_months = None
         if divorce_date != 'NA':
             divorce_dt = datetime.strptime(divorce_date, '%d %b %Y')
-            divorce_plus_9_months = divorce_dt + timedelta(days=270)  # approximately 9 months
+            divorce_plus_9_months = divorce_dt + timedelta(days=NINE_MONTHS_DAYS)  # approximately 9 months
         
         for child_id in children:
             if child_id not in ind_dict:
@@ -611,7 +617,7 @@ def validate_birth_before_death_of_parents(families_data, individuals_data):
             father = ind_dict[husband_id]
             if father.get('Death') != 'NA':
                 father_death = datetime.strptime(father['Death'], '%d %b %Y')
-                father_death_plus_9_months = father_death + timedelta(days=270)  # approximately 9 months
+                father_death_plus_9_months = father_death + timedelta(days=NINE_MONTHS_DAYS)  # approximately 9 months
         
         
         for child_id in children:
@@ -1006,7 +1012,7 @@ def validate_US10_marriage_after_14(family_list, individual_list):
                     if birth != 'NA':
                         birth_date = datetime.strptime(birth, "%d %b %Y")
                         age_at_marriage = (marry_date - birth_date).days / 365.25
-                        if age_at_marriage < 14:
+                        if age_at_marriage < MIN_MARRIAGE_AGE:
                             errors.append({
                                 'Family ID': fam.get('ID'),
                                 'Spouse ID': husb_id,
@@ -1026,7 +1032,7 @@ def validate_US10_marriage_after_14(family_list, individual_list):
                     if birth != 'NA':
                         birth_date = datetime.strptime(birth, "%d %b %Y")
                         age_at_marriage = (marry_date - birth_date).days / 365.25
-                        if age_at_marriage < 14:
+                        if age_at_marriage < MIN_MARRIAGE_AGE:
                             errors.append({
                                 'Family ID': fam.get('ID'),
                                 'Spouse ID': wife_id,
@@ -1214,7 +1220,7 @@ def validate_parent_age_limits(families_data, individuals_data):
             if mother_birth:
                 age_diff_mother = (child_birth.year - mother_birth.year - 
                                   ((child_birth.month, child_birth.day) < (mother_birth.month, mother_birth.day)))
-                if age_diff_mother >= 60:
+                if age_diff_mother >= MAX_MOTHER_AGE_DIFF:
                     errors.append({
                         'Family ID': family.get('ID'),
                         'Mother ID': wife_id,
@@ -1231,7 +1237,7 @@ def validate_parent_age_limits(families_data, individuals_data):
             if father_birth:
                 age_diff_father = (child_birth.year - father_birth.year - 
                                   ((child_birth.month, child_birth.day) < (father_birth.month, father_birth.day)))
-                if age_diff_father >= 80:
+                if age_diff_father >= MAX_FATHER_AGE_DIFF:
                     errors.append({
                         'Family ID': family.get('ID'),
                         'Father ID': husband_id,
