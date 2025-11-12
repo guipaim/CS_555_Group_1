@@ -867,6 +867,7 @@ def display_marriage_age_validation_errors(family_list, individual_list):
     
     print(f"\nUS10 Validation Errors ({len(errors)} found):")
     print(table)
+
 def validate_US10_marriage_after_14(family_list, individual_list):
     """
     US10: Marriage after 14
@@ -1183,6 +1184,87 @@ def listAllSingleIndividuals(individual_list):
             single_individuals.append(ind)
     return single_individuals
 
+def listRecentDeaths(individual_list):
+    list = []
+
+    for ind in individual_list:
+
+        try:   
+            death = ind.get('Death', 'NA')
+            if death != 'NA':
+                death_date = datetime.strptime(death, "%d %b %Y").date()
+                today = datetime.today().date()
+                delta = today - death_date
+                if delta.days <= 30:
+                    list.append({
+                        'Name': ind.get('Name'),
+                        'Death Date': death,
+                    })
+                           
+        except ValueError:
+            pass
+
+    print("\nRecent Deaths:")    
+    for item in list:
+        print(item)
+
+def listUpcomingBirthdays(individual_list):
+    list = []
+
+    for ind in individual_list:
+
+        try:   
+            birthday = ind.get('Birthday', 'NA')
+            if birthday != 'NA':
+                today = datetime.today().date()
+                birth_date = datetime.strptime(birthday, "%d %b %Y").date()
+                this_birthday = birth_date.replace(year=today.year)
+                delta = today + timedelta(days=30)
+                if today <= this_birthday <= delta:
+                    list.append({
+                        'Name': ind.get('Name'),
+                        'Birth Date': this_birthday.strftime('%Y-%m-%d'),
+                    })
+                           
+        except ValueError:
+            pass
+    
+    print("\nUpcomming Birthdays:")
+    for item in list:
+        print(item)
+    
+def listUpcomingAnniversary(family_list, individual_list):
+    list = []
+
+    for ind in individual_list:
+        spouse = ind.get('Spouse')
+
+        if spouse == 'NA':
+            continue
+
+        for fam in family_list:
+            if fam.get('Husband ID') == ind.get('ID') or fam.get('Wife ID') == ind.get('ID'):
+
+                married = fam.get('Married')
+            
+                if married == 'NA' or married is None:
+                    continue
+                
+                today = datetime.today().date()
+                marriage_date = datetime.strptime(married, "%d %b %Y").date()
+                this_anniversary = marriage_date.replace(year=today.year)
+                delta = today + timedelta(days=30)
+
+                if today <= this_anniversary <= delta:
+                    list.append({
+                        'Name': ind.get('Name'),
+                        'Birth Date': this_anniversary.strftime('%Y-%m-%d'),
+                    })
+                           
+    print("\nUpcomming Anniversaries:")
+    for item in list:
+        print(item)
+
 def listMultipleBdays(individual_list):
     bday_map = {}
     shared_bdays = []
@@ -1220,6 +1302,9 @@ if __name__ == "__main__":
     #organize individual
     individuals = organizeIndividualData(families, individuals)
     verifyAge(individuals)
+    listRecentDeaths(individuals)
+    listUpcomingBirthdays(individuals)
+    listUpcomingAnniversary(families, individuals)
     
     # Run the interactive menu
     run_menu(individuals, families)
