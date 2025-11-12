@@ -1,5 +1,5 @@
 import unittest
-from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14, validate_parent_age_limits, list_upcoming_birthdays
+from CS_555_WN_Project2_Code import readGedcomFile, organizeFamilyData, organizeIndividualData, validate__divorce_before_death, validate_marriage_before_death, createTable, validate_birth_before_marriage, validate_birth_before_death_of_parents, validate_birth_before_marriage_of_parents, validate_bigamy, validate_US10_marriage_after_14, validate_parent_age_limits, list_upcoming_birthdays, validate_US18_siblings_should_not_marry, validate_US19_first_cousins_should_not_marry
 
 class Test_CS_555_WN_Project2_Code(unittest.TestCase):
     
@@ -512,6 +512,154 @@ class Test_CS_555_WN_Project2_Code(unittest.TestCase):
             delta_days = (next_bday - today).days
             self.assertGreaterEqual(delta_days, 0)
             self.assertLessEqual(delta_days, 30)
+
+    def test_siblings_should_not_marry(self):
+        """Test US18: Siblings should not marry one another"""
+        # Test case 1: Valid scenario - no siblings married
+        mock_families_valid = [
+            {
+                'ID': 'F001',
+                'Husband ID': 'I001',
+                'Wife ID': 'I002',
+                'Children': ['I003', 'I004']  # I003 and I004 are siblings
+            },
+            {
+                'ID': 'F002',
+                'Husband ID': 'I005',  # I005 is not a sibling
+                'Wife ID': 'I003',     # I003 marries someone outside family
+                'Children': []
+            }
+        ]
+        
+        mock_individuals_valid = [
+            {'ID': 'I001', 'Name': 'Father One'},
+            {'ID': 'I002', 'Name': 'Mother One'},
+            {'ID': 'I003', 'Name': 'Child One'},
+            {'ID': 'I004', 'Name': 'Child Two'},
+            {'ID': 'I005', 'Name': 'Outsider'}
+        ]
+        
+        errors = validate_US18_siblings_should_not_marry(mock_families_valid, mock_individuals_valid)
+        self.assertEqual(len(errors), 0, "Should find no errors when siblings don't marry each other")
+        
+        # Test case 2: Invalid scenario - siblings married
+        mock_families_invalid = [
+            {
+                'ID': 'F001',
+                'Husband ID': 'I001',
+                'Wife ID': 'I002',
+                'Children': ['I003', 'I004']  # I003 and I004 are siblings
+            },
+            {
+                'ID': 'F002',
+                'Husband ID': 'I003',  # I003 (sibling)
+                'Wife ID': 'I004',     # I004 (sibling) - siblings married!
+                'Children': []
+            }
+        ]
+        
+        mock_individuals_invalid = [
+            {'ID': 'I001', 'Name': 'Father One'},
+            {'ID': 'I002', 'Name': 'Mother One'},
+            {'ID': 'I003', 'Name': 'Brother'},
+            {'ID': 'I004', 'Name': 'Sister'}
+        ]
+        
+        errors = validate_US18_siblings_should_not_marry(mock_families_invalid, mock_individuals_invalid)
+        self.assertEqual(len(errors), 1, "Should find exactly one error when siblings marry each other")
+        self.assertIn("US18", errors[0]['Error'])
+        self.assertIn("Brother", errors[0]['Husband Name'])
+        self.assertIn("Sister", errors[0]['Wife Name'])
+
+    def test_first_cousins_should_not_marry(self):
+        """Test US19: First cousins should not marry one another"""
+        # Test case 1: Valid scenario - no first cousins married
+        mock_families_valid = [
+            {
+                'ID': 'F001',  # Grandparents
+                'Husband ID': 'I001',
+                'Wife ID': 'I002',
+                'Children': ['I003', 'I004']  # Parent 1 and Parent 2 (siblings)
+            },
+            {
+                'ID': 'F002',  # Parent 1's family
+                'Husband ID': 'I003',
+                'Wife ID': 'I005',
+                'Children': ['I007']  # Child 1 (cousin)
+            },
+            {
+                'ID': 'F003',  # Parent 2's family
+                'Husband ID': 'I004',
+                'Wife ID': 'I006',
+                'Children': ['I008']  # Child 2 (cousin)
+            },
+            {
+                'ID': 'F004',  # Child 1 marries outsider (valid)
+                'Husband ID': 'I007',
+                'Wife ID': 'I009',  # Outsider, not a cousin
+                'Children': []
+            }
+        ]
+        
+        mock_individuals_valid = [
+            {'ID': 'I001', 'Name': 'Grandfather'},
+            {'ID': 'I002', 'Name': 'Grandmother'},
+            {'ID': 'I003', 'Name': 'Parent One'},
+            {'ID': 'I004', 'Name': 'Parent Two'},
+            {'ID': 'I005', 'Name': 'Spouse of Parent One'},
+            {'ID': 'I006', 'Name': 'Spouse of Parent Two'},
+            {'ID': 'I007', 'Name': 'Cousin One'},
+            {'ID': 'I008', 'Name': 'Cousin Two'},
+            {'ID': 'I009', 'Name': 'Outsider'}
+        ]
+        
+        errors = validate_US19_first_cousins_should_not_marry(mock_families_valid, mock_individuals_valid)
+        self.assertEqual(len(errors), 0, "Should find no errors when first cousins don't marry each other")
+        
+        # Test case 2: Invalid scenario - first cousins married
+        mock_families_invalid = [
+            {
+                'ID': 'F001',  # Grandparents
+                'Husband ID': 'I001',
+                'Wife ID': 'I002',
+                'Children': ['I003', 'I004']  # Parent 1 and Parent 2 (siblings)
+            },
+            {
+                'ID': 'F002',  # Parent 1's family
+                'Husband ID': 'I003',
+                'Wife ID': 'I005',
+                'Children': ['I007']  # Child 1 (cousin)
+            },
+            {
+                'ID': 'F003',  # Parent 2's family
+                'Husband ID': 'I004',
+                'Wife ID': 'I006',
+                'Children': ['I008']  # Child 2 (cousin)
+            },
+            {
+                'ID': 'F004',  # First cousins married (invalid)
+                'Husband ID': 'I007',  # Cousin 1
+                'Wife ID': 'I008',     # Cousin 2 - first cousins married!
+                'Children': []
+            }
+        ]
+        
+        mock_individuals_invalid = [
+            {'ID': 'I001', 'Name': 'Grandfather'},
+            {'ID': 'I002', 'Name': 'Grandmother'},
+            {'ID': 'I003', 'Name': 'Parent One'},
+            {'ID': 'I004', 'Name': 'Parent Two'},
+            {'ID': 'I005', 'Name': 'Spouse of Parent One'},
+            {'ID': 'I006', 'Name': 'Spouse of Parent Two'},
+            {'ID': 'I007', 'Name': 'Cousin One'},
+            {'ID': 'I008', 'Name': 'Cousin Two'}
+        ]
+        
+        errors = validate_US19_first_cousins_should_not_marry(mock_families_invalid, mock_individuals_invalid)
+        self.assertEqual(len(errors), 1, "Should find exactly one error when first cousins marry each other")
+        self.assertIn("US19", errors[0]['Error'])
+        self.assertIn("Cousin One", errors[0]['Husband Name'])
+        self.assertIn("Cousin Two", errors[0]['Wife Name'])
 
         
 if __name__ == "__main__":
