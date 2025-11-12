@@ -289,6 +289,67 @@ def list_deceased(individual_list):
 
     return deceasedList
 
+def list_orphans(individual_list, family_list):
+    orphaned_list = []
+
+    for ind in individual_list:
+        person_id = ind.get('ID')
+        person_age = ind.get('Age')
+        has_family = False 
+        if person_age  < 18:
+            for fam in family_list:
+
+                if ( person_id == fam.get('Husband ID') or person_id == fam.get('Wife ID') or person_id in fam.get('Children', [])):
+                    has_family = True
+                    break  
+
+            if not has_family:
+                orphaned_list.append(ind)
+
+    return orphaned_list
+
+def list_younger_spouse(family_list, individual_list):
+    younger_spouses = []
+    for fam in family_list:
+        husb_id = fam.get('Husband ID', 'NA')
+        wife_id = fam.get('Wife ID', 'NA')
+        husb_age = None
+        wife_age = None
+        
+        for ind in individual_list:
+            if ind.get('ID') == husb_id:
+                husb_age = ind.get('Age', None)
+            elif ind.get('ID') == wife_id:
+                wife_age = ind.get('Age', None)
+        
+        if husb_age is not None and wife_age is not None:
+            if husb_age < wife_age:
+                msg = f"Family {fam.get('ID')}: Husband {husb_id} is younger than Wife {wife_id}"
+                younger_spouses.append((fam.get('ID'), husb_id, wife_id, "Husband younger"))
+            elif wife_age < husb_age:
+                msg = f"Family {fam.get('ID')}: Wife {wife_id} is younger than Husband {husb_id}"
+                younger_spouses.append((fam.get('ID'), wife_id, husb_id, "Wife younger"))
+
+    return younger_spouses
+
+def list_recent_births(individual_list):
+    recent_births_list = []
+    today = datetime.today()
+    thirty_days_ago = today - timedelta(days=30)
+
+    for ind in individual_list:
+        birth_date_str = ind.get('Birthday')
+        if birth_date_str:
+            try:
+                birth_date = datetime.strptime(birth_date_str, "%d %b %Y")
+                if thirty_days_ago <= birth_date <= today:
+                    recent_births_list.append(ind)
+            except ValueError:
+                pass
+    
+    return recent_births_list
+
+
 def list_living_married(individual_list):
     """List all living married individuals"""
     living_married_list = []
@@ -711,10 +772,14 @@ def display_menu():
     print("7. Validate No Bigamy (US11)")
     print("8. Validate Parent Age Limits (US12)")
     print("9. List All Single Individuals Over 30 Years Old")
-    print("10. List Individuals with the Same Birthday")
-    print("11. Validate Fewer Than 15 Siblings (US15)")
-    print("12. Validate Correct Gender for Role (US21)")
-    print("13. Exit")
+    print("10. List Upcoming Birthdays ")
+    print("11. List Individuals with the Same Birthday")
+    print("12. Validate Fewer Than 15 Siblings (US15)")
+    print("13. Validate Correct Gender for Role (US21)")
+    print("14. List Orphaned Individuals")
+    print("15. List Individuals with Younger Spouses")
+    print("16. List Recent Births (Last 30 Days)")
+    print("17. Exit")
     print("="*60)
 
 
@@ -1258,7 +1323,7 @@ def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-12): ").strip()
+        choice = input("\nEnter your choice (1-17): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -1291,19 +1356,41 @@ def run_menu(individuals, families):
             bday_list = listMultipleBdays(individuals)
             for ind in bday_list:
                 print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
-        elif choice == '11':
+        elif choice == '12':
             errors = validate_fewer_than_15_siblings(families, individuals)
             if not errors:
                 print("\nUS15 Validation: No errors found! All families have fewer than 15 siblings.")
-        elif choice == '12':
+        elif choice == '13':
             errors = validate_correct_gender_for_role(families, individuals)
             if not errors:
                 print("\nUS21 Validation: No errors found! All gender roles are correct.")
-        elif choice == '13':  # Change from 11 to 13
+        elif choice == '14':
+            orphaned_individuals = list_orphans(individuals, families)
+            if not orphaned_individuals:
+                print("No orphaned individuals found.")
+            else:
+                print("\nList of Orphaned Individuals:")
+                for ind in orphaned_individuals:
+                    print(f" - {ind.get('Name')} (ID: {ind.get('ID')})")
+        elif choice == '15':
+            younger_spouses = list_younger_spouse(families, individuals)
+            
+            for record in younger_spouses:
+                fam_id, younger_id, older_id, description = record
+                print(f"Family {fam_id}: {description} ({younger_id} < {older_id})")
+        elif choice == '16':
+            recent_births = list_recent_births(individuals)
+            if not recent_births:
+                print("No recent births found.")
+            else:
+                print("\nList of Recent Births (Last 30 Days):")
+                for ind in recent_births:
+                    print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
+        elif choice == '17':
             print("\nExiting program. Goodbye!")
             break
         else:
-            print("\nInvalid choice! Please enter a number between 1 and 12.")
+            print("\nInvalid choice! Please enter a number between 1 and 18.")
 
         input("\nPress Enter to continue...")
   
