@@ -630,7 +630,9 @@ def display_menu():
     print("8. Validate Parent Age Limits (US12)")
     print("9. List All Single Individuals Over 30 Years Old")
     print("10. List Individuals with the Same Birthday")
-    print("11. Exit")
+    print("11. Siblings Should Not Marry (US18)")
+    print("12. First Cousins Should not Marry (US19)")
+    print("13. Exit")
     print("="*60)
 
 
@@ -1131,13 +1133,220 @@ def validate_parent_age_limits(families_data, individuals_data):
                     })
     
     return errors
+def validate_US18_siblings_should_not_marry(family_list, individual_list):
+    """
+    US18: Siblings should not marry one another
+    
+    How it works:
+    1. Build a map of siblings (people who share same parents)
+    2. Check if any married couple are in each other's sibling list
+    3. Report errors for sibling marriages
+    """
+    errors = []
+    
+    # Step 1: Build sibling map - Key: person_id, Value: list of sibling IDs
+    sibling_map = {}
+    
+    for fam in family_list:
+        children = fam.get('Children', [])
+        
+        # Need at least 2 children to have siblings
+        if not children or len(children) < 2:
+            continue
+        
+        # For each child, add all other children as siblings
+        for child_id in children:
+            if child_id not in sibling_map:
+                sibling_map[child_id] = []
+            
+            for other_child in children:
+                if other_child != child_id and other_child not in sibling_map[child_id]:
+                    sibling_map[child_id].append(other_child)
+    
+    # Step 2: Check each family for sibling marriages
+    for fam in family_list:
+        husb_id = fam.get('Husband ID', 'NA')
+        wife_id = fam.get('Wife ID', 'NA')
+        
+        if husb_id == 'NA' or wife_id == 'NA':
+            continue
+        
+        # Check if husband and wife are siblings
+        if husb_id in sibling_map and wife_id in sibling_map[husb_id]:
+            # Get names
+            husb_name = 'Unknown'
+            wife_name = 'Unknown'
+            
+            for ind in individual_list:
+                if ind.get('ID') == husb_id:
+                    husb_name = ind.get('Name', 'Unknown')
+                elif ind.get('ID') == wife_id:
+                    wife_name = ind.get('Name', 'Unknown')
+            
+            errors.append({
+                'Family ID': fam.get('ID'),
+                'Husband ID': husb_id,
+                'Husband Name': husb_name,
+                'Wife ID': wife_id,
+                'Wife Name': wife_name,
+                'Error': 'US18: Siblings should not marry each other'
+            })
+    
+    return errors
 
+
+def validate_US19_first_cousins_should_not_marry(family_list, individual_list):
+   
+    errors = []
+    
+    # Step 1: Build parent map - Key: child_id, Value: {'father': id, 'mother': id, 'family': id}
+    parent_map = {}
+    
+    for fam in family_list:
+        fam_id = fam.get('ID')
+        father_id = fam.get('Husband ID', 'NA')
+        mother_id = fam.get('Wife ID', 'NA')
+        children = fam.get('Children', [])
+        
+        for child_id in children:
+            parent_map[child_id] = {
+                'father': father_id,
+                'mother': mother_id,
+                'family': fam_id
+            }
+    
+    # Step 2: Build sibling map (from US18 logic)
+    sibling_map = {}
+    
+    for fam in family_list:
+        children = fam.get('Children', [])
+        
+        if not children or len(children) < 2:
+            continue
+        
+        for child_id in children:
+            if child_id not in sibling_map:
+                sibling_map[child_id] = []
+            
+            for other_child in children:
+                if other_child != child_id and other_child not in sibling_map[child_id]:
+                    sibling_map[child_id].append(other_child)
+    
+    # Step 3: Build cousin map - Key: person_id, Value: list of cousin IDs
+    cousin_map = {}
+    
+    for person_id, parents in parent_map.items():
+        father_id = parents['father']
+        mother_id = parents['mother']
+        
+        if person_id not in cousin_map:
+            cousin_map[person_id] = []
+        
+        # Find father's siblings
+        father_siblings = sibling_map.get(father_id, [])
+        
+        # Find mother's siblings
+        mother_siblings = sibling_map.get(mother_id, [])
+        
+        # Combine all aunts/uncles
+        aunts_uncles = father_siblings + mother_siblings
+        
+        # Find all children of aunts/uncles (these are cousins)
+        for aunt_uncle_id in aunts_uncles:
+            # Find families where this aunt/uncle is a parent
+            for fam in family_list:
+                if (fam.get('Husband ID') == aunt_uncle_id or 
+                    fam.get('Wife ID') == aunt_uncle_id):
+                    # All children of this aunt/uncle are cousins
+                    for cousin_id in fam.get('Children', []):
+                        if cousin_id != person_id and cousin_id not in cousin_map[person_id]:
+                            cousin_map[person_id].append(cousin_id)
+    
+    # Step 4: Check each family for cousin marriages
+    for fam in family_list:
+        husb_id = fam.get('Husband ID', 'NA')
+        wife_id = fam.get('Wife ID', 'NA')
+        
+        if husb_id == 'NA' or wife_id == 'NA':
+            continue
+        
+        # Check if husband and wife are cousins
+        if husb_id in cousin_map and wife_id in cousin_map[husb_id]:
+            # Get names
+            husb_name = 'Unknown'
+            wife_name = 'Unknown'
+            
+            for ind in individual_list:
+                if ind.get('ID') == husb_id:
+                    husb_name = ind.get('Name', 'Unknown')
+                elif ind.get('ID') == wife_id:
+                    wife_name = ind.get('Name', 'Unknown')
+            
+            errors.append({
+                'Family ID': fam.get('ID'),
+                'Husband ID': husb_id,
+                'Husband Name': husb_name,
+                'Wife ID': wife_id,
+                'Wife Name': wife_name,
+                'Error': 'US19: First cousins should not marry each other'
+            })
+    
+    return errors
+
+def display_us18_validation_errors(family_list, individual_list):
+    """Display US18 (sibling marriage) validation errors"""
+    errors = validate_US18_siblings_should_not_marry(family_list, individual_list)
+    
+    if not errors:
+        print("\nUS18 Validation: No errors found! No siblings married each other.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["Family ID", "Husband ID", "Husband Name", "Wife ID", "Wife Name", "Error"]
+    
+    for error in errors:
+        table.add_row([
+            error['Family ID'],
+            error['Husband ID'],
+            error['Husband Name'],
+            error['Wife ID'],
+            error['Wife Name'],
+            error['Error']
+        ])
+    
+    print(f"\nUS18 Validation Errors ({len(errors)} found):")
+    print(table)
+
+
+def display_us19_validation_errors(family_list, individual_list):
+    """Display US19 (cousin marriage) validation errors"""
+    errors = validate_US19_first_cousins_should_not_marry(family_list, individual_list)
+    
+    if not errors:
+        print("\nUS19 Validation: No errors found! No first cousins married each other.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["Family ID", "Husband ID", "Husband Name", "Wife ID", "Wife Name", "Error"]
+    
+    for error in errors:
+        table.add_row([
+            error['Family ID'],
+            error['Husband ID'],
+            error['Husband Name'],
+            error['Wife ID'],
+            error['Wife Name'],
+            error['Error']
+        ])
+    
+    print(f"\nUS19 Validation Errors ({len(errors)} found):")
+    print(table)
 
 def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-11): ").strip()
+        choice = input("\nEnter your choice (1-13): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -1168,11 +1377,16 @@ def run_menu(individuals, families):
             bday_list = listMultipleBdays(individuals)
             for ind in bday_list:
                 print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
+                
         elif choice == '11':
+            display_us18_validation_errors(families, individuals)
+        elif choice == '12':
+            display_us19_validation_errors(families, individuals)
+        elif choice == '13':
             print("\nExiting program. Goodbye!")
             break
         else:
-            print("\nInvalid choice! Please enter a number between 1 and 11.")
+            print("\nInvalid choice! Please enter a number between 1 and 13.")
 
         input("\nPress Enter to continue...")
   
