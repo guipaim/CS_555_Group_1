@@ -8,6 +8,7 @@ MIN_MARRIAGE_AGE = 14
 MAX_AGE_YEARS = 150
 NINE_MONTHS_DAYS = 270
 TEN_YEARS_DAYS = 3650
+THIRTY_DAYS = 30
 
 def parse_line(line):  
     
@@ -332,17 +333,20 @@ def list_younger_spouse(family_list, individual_list):
 
     return younger_spouses
 
-def list_recent_births(individual_list):
+def list_recent_births(individual_list, days=THIRTY_DAYS):
+    """US35: List all births that occurred within the last specified days"""
     recent_births_list = []
     today = datetime.today()
-    thirty_days_ago = today - timedelta(days=30)
 
     for ind in individual_list:
-        birth_date_str = ind.get('Birthday')
-        if birth_date_str:
+        birth_date_str = ind.get('Birthday', 'NA')
+        if birth_date_str != 'NA':
             try:
                 birth_date = datetime.strptime(birth_date_str, "%d %b %Y")
-                if thirty_days_ago <= birth_date <= today:
+                days_since_birth = (today - birth_date).days
+
+                # Only include births in the past (days_since_birth >= 0) and within the last X days
+                if 0 <= days_since_birth <= days:
                     recent_births_list.append(ind)
             except ValueError:
                 pass
@@ -899,6 +903,47 @@ def display_upcoming_birthdays(individual_list, days=30):
         ])
     
     print(f"\nUpcoming Birthdays in Next {days} Days ({len(upcoming)} found):")
+    print(table)
+
+
+def display_recent_births_table(individual_list, days=THIRTY_DAYS):
+    """Display recent births in a formatted table (US35)"""
+    recent_births = list_recent_births(individual_list, days=days)
+    
+    if not recent_births:
+        print(f"\nNo births found in the last {days} days.")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["ID", "Name", "Gender", "Birthday", "Age", "Alive", "Children", "Spouse"]
+    
+    for ind in recent_births:
+        children = ind.get('Children', [])
+        if children == 'NA' or not children:
+            children_display = "NA"
+        elif isinstance(children, list):
+            children_display = "{" + ", ".join([f"'{c}'" for c in children]) + "}"
+        else:
+            children_display = f"{{'{children}'}}"
+        
+        spouse = ind.get('Spouse', 'NA')
+        if spouse == 'NA':
+            spouse_display = "NA"
+        else:
+            spouse_display = f"{{'{spouse}'}}"
+        
+        table.add_row([
+            ind.get('ID', ''),
+            ind.get('Name', ''),
+            ind.get('Gender', ''),
+            ind.get('Birthday', ''),
+            ind.get('Age', ''),
+            ind.get('Alive', ''),
+            children_display,
+            spouse_display
+        ])
+    
+    print(f"\nRecent Births (Last {days} Days) ({len(recent_births)} found):")
     print(table)
 
 
@@ -1590,13 +1635,7 @@ def run_menu(individuals, families):
                     fam_id, younger_id, older_id, description = record
                     print(f"Family {fam_id}: {description} ({younger_id} < {older_id})")
         elif choice == '16':
-            recent_births = list_recent_births(individuals)
-            if not recent_births:
-                print("No recent births found.")
-            else:
-                print("\nList of Recent Births (Last 30 Days):")
-                for ind in recent_births:
-                    print(f" - {ind.get('Name')} (ID: {ind.get('ID')}, Birthday: {ind.get('Birthday')})")
+            display_recent_births_table(individuals)
         elif choice == '17':
             display_us18_validation_errors(families, individuals)
         elif choice == '18':
