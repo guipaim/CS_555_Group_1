@@ -353,6 +353,141 @@ def list_recent_births(individual_list, days=THIRTY_DAYS):
     
     return recent_births_list
 
+def list_recent_survivors(individual_list, family_list, days=THIRTY_DAYS):
+    """List all living people who recently lost a spouse or parent"""
+    survivors = []
+    today = datetime.today()
+    
+    # Create dictionaries for quick lookup
+    ind_dict = {ind['ID']: ind for ind in individual_list}
+    
+    # Find people who lost a spouse recently
+    for fam in family_list:
+        husband_id = fam.get('Husband ID', 'NA')
+        wife_id = fam.get('Wife ID', 'NA')
+        
+        if husband_id != 'NA' and husband_id in ind_dict:
+            husband = ind_dict[husband_id]
+            if wife_id != 'NA' and wife_id in ind_dict:
+                wife = ind_dict[wife_id]
+                wife_death = wife.get('Death', 'NA')
+                
+                # Check if wife died recently and husband is alive
+                if wife_death != 'NA' and husband.get('Alive') == 'True':
+                    try:
+                        death_date = datetime.strptime(wife_death, "%d %b %Y")
+                        days_since_death = (today - death_date).days
+                        if 0 <= days_since_death <= days:
+                            # Check if already in list
+                            if husband_id not in [s['individual']['ID'] for s in survivors]:
+                                survivors.append({
+                                    'individual': husband,
+                                    'relationship': 'Spouse',
+                                    'deceased_name': wife.get('Name', 'NA'),
+                                    'deceased_id': wife_id,
+                                    'death_date': wife_death,
+                                    'days_ago': days_since_death
+                                })
+                    except ValueError:
+                        pass
+        
+        if wife_id != 'NA' and wife_id in ind_dict:
+            wife = ind_dict[wife_id]
+            if husband_id != 'NA' and husband_id in ind_dict:
+                husband = ind_dict[husband_id]
+                husband_death = husband.get('Death', 'NA')
+                
+                # Check if husband died recently and wife is alive
+                if husband_death != 'NA' and wife.get('Alive') == 'True':
+                    try:
+                        death_date = datetime.strptime(husband_death, "%d %b %Y")
+                        days_since_death = (today - death_date).days
+                        if 0 <= days_since_death <= days:
+                            # Check if already in list
+                            if wife_id not in [s['individual']['ID'] for s in survivors]:
+                                survivors.append({
+                                    'individual': wife,
+                                    'relationship': 'Spouse',
+                                    'deceased_name': husband.get('Name', 'NA'),
+                                    'deceased_id': husband_id,
+                                    'death_date': husband_death,
+                                    'days_ago': days_since_death
+                                })
+                    except ValueError:
+                        pass
+    
+    # Find people who lost a parent recently
+    for fam in family_list:
+        children = fam.get('Children', [])
+        husband_id = fam.get('Husband ID', 'NA')
+        wife_id = fam.get('Wife ID', 'NA')
+        
+        father = ind_dict.get(husband_id) if husband_id != 'NA' else None
+        mother = ind_dict.get(wife_id) if wife_id != 'NA' else None
+        
+        father_death = father.get('Death', 'NA') if father else 'NA'
+        mother_death = mother.get('Death', 'NA') if mother else 'NA'
+        
+        # Check if parent died recently
+        for child_id in children:
+            if child_id not in ind_dict:
+                continue
+            
+            child = ind_dict[child_id]
+            if child.get('Alive') != 'True':
+                continue
+            
+            # Check if father died recently
+            if father_death != 'NA':
+                try:
+                    death_date = datetime.strptime(father_death, "%d %b %Y")
+                    days_since_death = (today - death_date).days
+                    if 0 <= days_since_death <= days:
+                        if child not in [s['individual'] for s in survivors]:
+                            survivors.append({
+                                'individual': child,
+                                'relationship': 'Child (Father)',
+                                'deceased_name': father.get('Name', 'NA'),
+                                'deceased_id': husband_id,
+                                'death_date': father_death,
+                                'days_ago': days_since_death
+                            })
+                except ValueError:
+                    pass
+            
+            # Check if mother died recently
+            if mother_death != 'NA':
+                try:
+                    death_date = datetime.strptime(mother_death, "%d %b %Y")
+                    days_since_death = (today - death_date).days
+                    if 0 <= days_since_death <= days:
+                        # Check if already in list (might have lost both parents)
+                        existing = next((s for s in survivors if s['individual']['ID'] == child_id), None)
+                        if existing:
+                            # Update to show both parents if applicable
+                            if existing['relationship'] == 'Child (Father)':
+                                existing['relationship'] = 'Child (Both Parents)'
+                                existing['deceased_name'] += f" & {mother.get('Name', 'NA')}"
+                            else:
+                                existing['relationship'] = 'Child (Mother)'
+                                existing['deceased_name'] = mother.get('Name', 'NA')
+                                existing['deceased_id'] = wife_id
+                                existing['death_date'] = mother_death
+                                existing['days_ago'] = days_since_death
+                        else:
+                            survivors.append({
+                                'individual': child,
+                                'relationship': 'Child (Mother)',
+                                'deceased_name': mother.get('Name', 'NA'),
+                                'deceased_id': wife_id,
+                                'death_date': mother_death,
+                                'days_ago': days_since_death
+                            })
+                except ValueError:
+                    pass
+    
+    return survivors
+
 
 def list_living_married(individual_list):
     """List all living married individuals"""
@@ -783,9 +918,10 @@ def display_menu():
     print("14. List Orphaned Individuals (US33)")
     print("15. List Individuals with Younger Spouses (US34)")
     print("16. List Recent Births - Last 30 Days (US35)")
-    print("17. Siblings Should Not Marry (US18)")
-    print("18. First Cousins Should not Marry (US19)")
-    print("19. Exit")
+    print("17. List Recent Survivors - Last 30 Days")
+    print("18. Siblings Should Not Marry (US18)")
+    print("19. First Cousins Should not Marry (US19)")
+    print("20. Exit")
     print("="*60)
 
 
@@ -944,6 +1080,32 @@ def display_recent_births_table(individual_list, days=THIRTY_DAYS):
         ])
     
     print(f"\nRecent Births (Last {days} Days) ({len(recent_births)} found):")
+    print(table)
+
+
+def display_recent_survivors_table(individual_list, family_list, days=THIRTY_DAYS):
+    """Display recent survivors in a formatted table"""
+    survivors = list_recent_survivors(individual_list, family_list, days=days)
+    
+    if not survivors:
+        print(f"\nNo recent survivors found (no deaths in the last {days} days with living survivors).")
+        return
+    
+    table = PrettyTable()
+    table.field_names = ["ID", "Name", "Relationship", "Deceased Name", "Death Date", "Days Ago"]
+    
+    for survivor_info in survivors:
+        ind = survivor_info['individual']
+        table.add_row([
+            ind.get('ID', ''),
+            ind.get('Name', ''),
+            survivor_info['relationship'],
+            survivor_info['deceased_name'],
+            survivor_info['death_date'],
+            survivor_info['days_ago']
+        ])
+    
+    print(f"\nRecent Survivors (Last {days} Days) ({len(survivors)} found):")
     print(table)
 
 
@@ -1576,7 +1738,7 @@ def run_menu(individuals, families):
     """Run the interactive menu"""
     while True:
         display_menu()
-        choice = input("\nEnter your choice (1-19): ").strip()
+        choice = input("\nEnter your choice (1-20): ").strip()
         
         if choice == '1':
             createTable(families, individuals)
@@ -1637,14 +1799,16 @@ def run_menu(individuals, families):
         elif choice == '16':
             display_recent_births_table(individuals)
         elif choice == '17':
-            display_us18_validation_errors(families, individuals)
+            display_recent_survivors_table(individuals, families)
         elif choice == '18':
-            display_us19_validation_errors(families, individuals)
+            display_us18_validation_errors(families, individuals)
         elif choice == '19':
+            display_us19_validation_errors(families, individuals)
+        elif choice == '20':
             print("\nExiting program. Goodbye!")
             break
         else:
-            print("\nInvalid choice! Please enter a number between 1 and 19.")
+            print("\nInvalid choice! Please enter a number between 1 and 20.")
 
         input("\nPress Enter to continue...")
   
